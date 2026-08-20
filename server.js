@@ -1,14 +1,18 @@
 const express = require("express");
 const path = require("path");
 const mysql = require("mysql2");
+
 const app = express();
 
+// MySQL database connection
 const db = mysql.createConnection({
     host: "localhost",
     user: "root",
     password: "root",
     database: "expense_app"
 });
+
+// Connect to MySQL
 db.connect((err) => {
     if (err) {
         console.log("Database connection failed:", err);
@@ -17,49 +21,67 @@ db.connect((err) => {
     }
 });
 
+// Read form data
 app.use(express.urlencoded({ extended: true }));
 
-app.get("/",(req,res)=>
-{
+// Home route
+app.get("/", (req, res) => {
     res.send("Hello Expense App!");
 });
 
-app.get("/signup", (req, res)=>
-{
+// Show signup page
+app.get("/signup", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "signup.html"));
-}); 
-
-
-// Handle signup button click
-app.post("/signup", (req, res) => {
-
-    const { name, email, password } = req.body;
-
-    const sql = `
-        INSERT INTO users (name, email, password)
-        VALUES (?, ?, ?)
-    `;
-
- db.query(sql, [name, email, password], (err, result) => {
-
-        if (err) {
-            console.log("Error:", err);
-            return res.send("Signup failed. Email may already exist.");
-        }
-
-        console.log("User created successfully!");
-
-        res.send(`
-            <h1>Signup Successful!</h1>
-            <p>Welcome, ${name}!</p>
-            <p>Your account has been created successfully.</p>
-            <a href="/signup">Go Back</a>
-        `);
- });
 });
 
+// Handle signup
+app.post("/signup", (req, res) => {
 
-app.listen(3000, ()=>
-{
+    // Get data from frontend form
+    const { name, email, password } = req.body;
+
+    // Check whether the user already exists
+    const checkUserSql = "SELECT * FROM users WHERE email = ?";
+
+    db.query(checkUserSql, [email], (err, results) => {
+
+        // Database error
+        if (err) {
+            console.log("Error:", err);
+            return res.send("Something went wrong");
+        }
+
+        // User already exists
+        if (results.length > 0) {
+            return res.send("User already exists");
+        }
+
+        // Insert new user
+        const insertUserSql = `
+            INSERT INTO users (name, email, password)
+            VALUES (?, ?, ?)
+        `;
+
+        db.query(insertUserSql, [name, email, password], (err, result) => {
+
+            if (err) {
+                console.log("Error:", err);
+                return res.send("Signup failed");
+            }
+
+            console.log("User created successfully!");
+
+            res.send(`
+                <h1>Signup Successful!</h1>
+                <p>Welcome, ${name}!</p>
+                <p>Your account has been created successfully.</p>
+                <a href="/signup">Go Back</a>
+            `);
+        });
+    });
+});
+
+// Start server
+app.listen(3000, () => {
     console.log("Server is running on port 3000");
 });
