@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sign Up - Expense App</title>
+    <title>Log in - Expense App</title>
 
     <style>
         * {
@@ -86,22 +86,13 @@ button:active {
 
     <div class="container">
 
-        <h1>Create Account</h1>
+        <h1>log in</h1>
 
         <p class="subtitle">
-            Sign up to start managing your expenses
+            Sign in to start managing your expenses
         </p>
 
-        <form action="/signup" method="POST">
-
-            <label for="name">Name</label>
-            <input
-                id="name"
-                name="name"
-                type="text"
-                placeholder="Enter your name"
-                required
-            >
+        <form action="/login" method="POST">
 
             <label for="email">Email</label>
             <input
@@ -121,13 +112,13 @@ button:active {
                 required
             >
 
-            <button type="submit">Sign Up</button>
+            <button type="submit">Log In</button>
 
         </form>
 
-        <p class="login-text">
-            Already have an account?
-            <a href="/login">Login</a>
+        <p class="new-user">
+            Create an account?
+            <a href="/signup">Sign up</a>
         </p>
 
     </div>
