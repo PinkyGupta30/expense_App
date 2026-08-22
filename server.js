@@ -80,19 +80,19 @@ app.post("/signup", (req, res) => {
         });
     });
 });
+
 // Show login page
-app.get("/login", (req, res) =>
-{
+app.get("/login", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "login.html"));
 });
 
-// Handle signin
+// Handle login
 app.post("/login", (req, res) => {
 
-    // Get data from frontend form
+    // Receive email and password from frontend
     const { email, password } = req.body;
 
-    // find user using email
+    // Check whether the user exists
     const checkUserSql = "SELECT * FROM users WHERE email = ?";
 
     db.query(checkUserSql, [email], (err, results) => {
@@ -100,40 +100,28 @@ app.post("/login", (req, res) => {
         // Database error
         if (err) {
             console.log("Error:", err);
-            return res.send("something went wrong");
+            return res.status(500).send("Something went wrong");
         }
 
-        // User does not exists
-        if (results.length === 0) 
-        {
-            return res.send("User not found");
+        // User does not exist
+        if (results.length === 0) {
+            return res.status(404).send("User not found");
         }
 
-        // get user from db
-
+        // Get user from database
         const user = results[0];
 
-        //compare pwd
-
-        if(user.password === password)
-        {
-            console.log("user logged in successfully");
-
-            return res.send(`
-                <h1>Login Successful!</h1>
-                <p>Welcome, ${user.name}!</p>
-                <p>You have logged in successfully.</p>
-                <a href="/login">Go Back</a>
-                `)
-        }
-        else
-        {
-            return res.send("Invalid password");
+        // Check password
+        if (user.password !== password) {
+            return res.status(401).send("User not authorized");
         }
 
+        // Login successful
+        console.log("User logged in successfully");
+
+        return res.status(200).send("User login successful");
     });
 });
-
 
 // Start server
 app.listen(3000, () => {
