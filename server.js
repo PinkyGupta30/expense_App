@@ -5,7 +5,8 @@ const bcrypt = require("bcrypt");
 
 const app = express();
 
-// MySQL database connection
+// ==================== DATABASE CONNECTION ====================
+
 const db = mysql.createConnection({
     host: "localhost",
     user: "root",
@@ -13,7 +14,6 @@ const db = mysql.createConnection({
     database: "expense_app"
 });
 
-// Connect to MySQL
 db.connect((err) => {
     if (err) {
         console.log("Database connection failed:", err);
@@ -22,10 +22,16 @@ db.connect((err) => {
     }
 });
 
-// Read form data
+// ==================== MIDDLEWARE ====================
+
+// Read normal HTML form data
 app.use(express.urlencoded({ extended: true }));
 
-// Home route
+// Read JSON data
+app.use(express.json());
+
+// ==================== HOME ====================
+
 app.get("/", (req, res) => {
     res.send("Hello Expense App!");
 });
@@ -40,18 +46,15 @@ app.get("/signup", (req, res) => {
 // Handle signup
 app.post("/signup", (req, res) => {
 
-    // Get data from frontend form
     const { name, email, password } = req.body;
 
-    // Check whether the user already exists
     const checkUserSql = "SELECT * FROM users WHERE email = ?";
 
     db.query(checkUserSql, [email], async (err, results) => {
 
-        // Database error
         if (err) {
             console.log("Error:", err);
-            return res.send("Something went wrong");
+            return res.status(500).send("Something went wrong");
         }
 
         // User already exists
@@ -63,7 +66,6 @@ app.post("/signup", (req, res) => {
             // Hash password
             const hashedPassword = await bcrypt.hash(password, 10);
 
-            // Insert new user
             const insertUserSql = `
                 INSERT INTO users (name, email, password)
                 VALUES (?, ?, ?)
@@ -76,7 +78,7 @@ app.post("/signup", (req, res) => {
 
                     if (err) {
                         console.log("Error:", err);
-                        return res.send("Signup failed");
+                        return res.status(500).send("Signup failed");
                     }
 
                     console.log("User created successfully!");
@@ -91,6 +93,7 @@ app.post("/signup", (req, res) => {
             );
 
         } catch (error) {
+
             console.log("Password hashing error:", error);
 
             return res.status(500).send("Something went wrong");
@@ -108,50 +111,124 @@ app.get("/login", (req, res) => {
 // Handle login
 app.post("/login", (req, res) => {
 
-    // Receive email and password from frontend
     const { email, password } = req.body;
 
-    // Check whether the user exists
     const checkUserSql = "SELECT * FROM users WHERE email = ?";
 
     db.query(checkUserSql, [email], async (err, results) => {
 
-        // Database error
         if (err) {
             console.log("Error:", err);
             return res.status(500).send("Something went wrong");
         }
 
-        // User does not exist
+        // User not found
         if (results.length === 0) {
             return res.status(404).send("User not found");
         }
 
         try {
-            // Get user from database
             const user = results[0];
 
-            // Compare entered password with stored hashed password
+            // Compare normal password with bcrypt hash
             const isPasswordMatch = await bcrypt.compare(
                 password,
                 user.password
             );
 
-            // Password does not match
             if (!isPasswordMatch) {
                 return res.status(401).send("User not authorized");
             }
 
-            // Login successful
             console.log("User logged in successfully");
 
-            return res.status(200).send("User login successful");
+            // Redirect after successful login
+            return res.redirect("/expenses");
 
         } catch (error) {
+
             console.log("Password comparison error:", error);
 
             return res.status(500).send("Something went wrong");
         }
+    });
+});
+
+// ==================== EXPENSE PAGE ====================
+
+// Show expense page
+app.get("/expenses", (req, res) => {
+    res.sendFile(
+        path.join(__dirname, "public", "expense.html")
+    );
+});
+
+// ==================== ADD EXPENSE ====================
+
+// Add expense to database
+app.post("/api/expenses", (req, res) => {
+
+    const { amount, description, category } = req.body;
+
+    // Validate fields
+    if (!amount || !description || !category) {
+        return res.status(400).json({
+            message: "All fields are required"
+        });
+    }
+
+    const insertExpenseSql = `
+        INSERT INTO expenses (amount, description, category)
+        VALUES (?, ?, ?)
+    `;
+
+    db.query(
+        insertExpenseSql,
+        [amount, description, category],
+        (err, result) => {
+
+            if (err) {
+                console.log("Error adding expense:", err);
+
+                return res.status(500).json({
+                    message: "Expense could not be added"
+                });
+            }
+
+            return res.status(201).json({
+                message: "Expense added successfully",
+                expense: {
+                    id: result.insertId,
+                    amount: amount,
+                    description: description,
+                    category: category
+                }
+            });
+        }
+    );
+});
+
+// ==================== GET ALL EXPENSES ====================
+
+// Fetch expenses from database
+app.get("/api/expenses", (req, res) => {
+
+    const getExpensesSql = `
+        SELECT * FROM expenses
+        ORDER BY id DESC
+    `;
+
+    db.query(getExpensesSql, (err, results) => {
+
+        if (err) {
+            console.log("Error fetching expenses:", err);
+
+            return res.status(500).json({
+                message: "Could not fetch expenses"
+            });
+        }
+
+        return res.status(200).json(results);
     });
 });
 
