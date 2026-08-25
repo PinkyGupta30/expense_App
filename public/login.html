@@ -57,28 +57,32 @@
             border-color: #555555;
         }
 
-       button {
-              width: 100%;
-              padding: 12px;
-              border: none;
-              border-radius: 6px;
-              background-color: #007bff;
-              color: white;
-              font-size: 16px;
-              font-weight: bold;
-              cursor: pointer;
-              transition: 0.3s;
-             }
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            background-color: #007bff;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
 
-button:hover {
-    background-color: #0056b3;
-    transform: translateY(-1px);
-}
+        button:hover {
+            background-color: #0056b3;
+            transform: translateY(-1px);
+        }
 
-button:active {
-    transform: translateY(1px);
-}
-       
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .new-user {
+            text-align: center;
+            margin-top: 20px;
+        }
     </style>
 </head>
 
@@ -86,33 +90,36 @@ button:active {
 
     <div class="container">
 
-        <h1>log in</h1>
+        <h1>Log In</h1>
 
         <p class="subtitle">
             Sign in to start managing your expenses
         </p>
 
-        <form action="/login" method="POST">
+        <!-- No action and method here because JavaScript handles login -->
+        <form id="loginForm">
 
             <label for="email">Email</label>
+
             <input
                 id="email"
-                name="email"
                 type="email"
                 placeholder="Enter your email"
                 required
             >
 
             <label for="password">Password</label>
+
             <input
                 id="password"
-                name="password"
                 type="password"
                 placeholder="Enter your password"
                 required
             >
 
-            <button type="submit">Log In</button>
+            <button type="submit">
+                Log In
+            </button>
 
         </form>
 
@@ -122,6 +129,94 @@ button:active {
         </p>
 
     </div>
+
+
+    <script>
+
+        // Get login form
+        const loginForm =
+            document.getElementById("loginForm");
+
+
+        // When user submits login form
+        loginForm.addEventListener(
+            "submit",
+            async (event) => {
+
+                // Stop normal form submission
+                event.preventDefault();
+
+
+                // Get email value
+                const email =
+                    document.getElementById("email").value;
+
+
+                // Get password value
+                const password =
+                    document.getElementById("password").value;
+
+
+                try {
+
+                    // Send login request to backend
+                    const response =
+                        await fetch("/login", {
+
+                            method: "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+
+                            body: JSON.stringify({
+                                email: email,
+                                password: password
+                            })
+                        });
+
+
+                    // Get response from backend
+                    const data =
+                        await response.json();
+
+
+                    // If login successful
+                    if (response.ok) {
+
+                        // Save JWT token in browser
+                        localStorage.setItem(
+                            "token",
+                            data.token
+                        );
+
+
+                        // Open expense page
+                        window.location.href =
+                            "/expenses";
+
+                    } else {
+
+                        // Show backend error
+                        alert(data.message);
+                    }
+
+                } catch (error) {
+
+                    console.log(
+                        "Login error:",
+                        error
+                    );
+
+                    alert(
+                        "Something went wrong"
+                    );
+                }
+            }
+        );
+
+    </script>
 
 </body>
 </html>

@@ -2,6 +2,9 @@ const express = require("express");
 const path = require("path");
 const mysql = require("mysql2");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+
+const authenticate = require("./middleware/auth");
 
 const app = express();
 
@@ -40,7 +43,9 @@ app.get("/", (req, res) => {
 
 // Show signup page
 app.get("/signup", (req, res) => {
-    res.sendFile(path.join(__dirname, "public", "signup.html"));
+    res.sendFile(
+        path.join(__dirname, "public", "signup.html")
+    );
 });
 
 // Handle signup
@@ -48,64 +53,78 @@ app.post("/signup", (req, res) => {
 
     const { name, email, password } = req.body;
 
-    const checkUserSql = "SELECT * FROM users WHERE email = ?";
+    const checkUserSql =
+        "SELECT * FROM users WHERE email = ?";
 
-    db.query(checkUserSql, [email], async (err, results) => {
+    db.query(
+        checkUserSql,
+        [email],
+        async (err, results) => {
 
-        if (err) {
-            console.log("Error:", err);
-            return res.status(500).send("Something went wrong");
-        }
+            if (err) {
+                console.log("Error:", err);
+                return res.status(500).send("Something went wrong");
+            }
 
-        // User already exists
-        if (results.length > 0) {
-            return res.send("User already exists");
-        }
+            // User already exists
+            if (results.length > 0) {
+                return res.send("User already exists");
+            }
 
-        try {
-            // Hash password
-            const hashedPassword = await bcrypt.hash(password, 10);
+            try {
 
-            const insertUserSql = `
-                INSERT INTO users (name, email, password)
-                VALUES (?, ?, ?)
-            `;
+                // Hash password
+                const hashedPassword =
+                    await bcrypt.hash(password, 10);
 
-            db.query(
-                insertUserSql,
-                [name, email, hashedPassword],
-                (err, result) => {
+                const insertUserSql = `
+                    INSERT INTO users (name, email, password)
+                    VALUES (?, ?, ?)
+                `;
 
-                    if (err) {
-                        console.log("Error:", err);
-                        return res.status(500).send("Signup failed");
+                db.query(
+                    insertUserSql,
+                    [name, email, hashedPassword],
+                    (err, result) => {
+
+                        if (err) {
+                            console.log("Error:", err);
+                            return res.status(500).send("Signup failed");
+                        }
+
+                        console.log("User created successfully!");
+
+                        return res.send(`
+                            <h1>Signup Successful!</h1>
+                            <p>Welcome, ${name}!</p>
+                            <p>Your account has been created successfully.</p>
+                            <a href="/login">Login</a>
+                        `);
                     }
+                );
 
-                    console.log("User created successfully!");
+            } catch (error) {
 
-                    res.send(`
-                        <h1>Signup Successful!</h1>
-                        <p>Welcome, ${name}!</p>
-                        <p>Your account has been created successfully.</p>
-                        <a href="/login">Login</a>
-                    `);
-                }
-            );
+                console.log(
+                    "Password hashing error:",
+                    error
+                );
 
-        } catch (error) {
-
-            console.log("Password hashing error:", error);
-
-            return res.status(500).send("Something went wrong");
+                return res.status(500).send(
+                    "Something went wrong"
+                );
+            }
         }
-    });
+    );
 });
 
 // ==================== LOGIN ====================
 
 // Show login page
 app.get("/login", (req, res) => {
-    res.sendFile(path.join(__dirname, "public", "login.html"));
+    res.sendFile(
+        path.join(__dirname, "public", "login.html")
+    );
 });
 
 // Handle login
@@ -113,124 +132,276 @@ app.post("/login", (req, res) => {
 
     const { email, password } = req.body;
 
-    const checkUserSql = "SELECT * FROM users WHERE email = ?";
+    const checkUserSql =
+        "SELECT * FROM users WHERE email = ?";
 
-    db.query(checkUserSql, [email], async (err, results) => {
+    db.query(
+        checkUserSql,
+        [email],
+        async (err, results) => {
 
-        if (err) {
-            console.log("Error:", err);
-            return res.status(500).send("Something went wrong");
-        }
+            if (err) {
+                console.log("Error:", err);
 
-        // User not found
-        if (results.length === 0) {
-            return res.status(404).send("User not found");
-        }
-
-        try {
-            const user = results[0];
-
-            // Compare normal password with bcrypt hash
-            const isPasswordMatch = await bcrypt.compare(
-                password,
-                user.password
-            );
-
-            if (!isPasswordMatch) {
-                return res.status(401).send("User not authorized");
+                return res.status(500).json({
+                    message: "Something went wrong"
+                });
             }
 
-            console.log("User logged in successfully");
+            // User not found
+            if (results.length === 0) {
 
-            // Redirect after successful login
-            return res.redirect("/expenses");
+                return res.status(404).json({
+                    message: "User not found"
+                });
+            }
 
-        } catch (error) {
+            try {
 
-            console.log("Password comparison error:", error);
+                const user = results[0];
 
-            return res.status(500).send("Something went wrong");
+                // Compare entered password
+                // with bcrypt hashed password
+                const isPasswordMatch =
+                    await bcrypt.compare(
+                        password,
+                        user.password
+                    );
+
+                // Password incorrect
+                if (!isPasswordMatch) {
+
+                    return res.status(401).json({
+                        message: "User not authorized"
+                    });
+                }
+
+                // ====================
+                // GENERATE JWT TOKEN
+                // ====================
+
+                const token = jwt.sign(
+                    {
+                        userId: user.id,
+                        email: user.email
+                    },
+                    "my_secret_key",
+                    {
+                        expiresIn: "1h"
+                    }
+                );
+
+                console.log(
+                    "User logged in successfully"
+                );
+
+                // Send token to frontend
+                return res.status(200).json({
+                    message: "Login successful",
+                    token: token
+                });
+
+            } catch (error) {
+
+                console.log(
+                    "Login error:",
+                    error
+                );
+
+                return res.status(500).json({
+                    message: "Something went wrong"
+                });
+            }
         }
-    });
+    );
 });
 
 // ==================== EXPENSE PAGE ====================
 
 // Show expense page
 app.get("/expenses", (req, res) => {
+
     res.sendFile(
-        path.join(__dirname, "public", "expense.html")
+        path.join(
+            __dirname,
+            "public",
+            "expense.html"
+        )
     );
 });
 
 // ==================== ADD EXPENSE ====================
 
-// Add expense to database
-app.post("/api/expenses", (req, res) => {
+// authenticate middleware runs first
+app.post(
+    "/api/expenses",
+    authenticate,
+    (req, res) => {
 
-    const { amount, description, category } = req.body;
+        const {
+            amount,
+            description,
+            category
+        } = req.body;
 
-    // Validate fields
-    if (!amount || !description || !category) {
-        return res.status(400).json({
-            message: "All fields are required"
-        });
-    }
+        // Get logged-in user ID
+        // from verified JWT token
+        const userId = req.user.userId;
 
-    const insertExpenseSql = `
-        INSERT INTO expenses (amount, description, category)
-        VALUES (?, ?, ?)
-    `;
+        // Validate fields
+        if (!amount || !description || !category) {
 
-    db.query(
-        insertExpenseSql,
-        [amount, description, category],
-        (err, result) => {
+            return res.status(400).json({
+                message: "All fields are required"
+            });
+        }
 
-            if (err) {
-                console.log("Error adding expense:", err);
+        const insertExpenseSql = `
+            INSERT INTO expenses
+            (amount, description, category, user_id)
+            VALUES (?, ?, ?, ?)
+        `;
 
-                return res.status(500).json({
-                    message: "Expense could not be added"
+        db.query(
+            insertExpenseSql,
+            [
+                amount,
+                description,
+                category,
+                userId
+            ],
+            (err, result) => {
+
+                if (err) {
+
+                    console.log(
+                        "Error adding expense:",
+                        err
+                    );
+
+                    return res.status(500).json({
+                        message:
+                            "Expense could not be added"
+                    });
+                }
+
+                return res.status(201).json({
+
+                    message:
+                        "Expense added successfully",
+
+                    expense: {
+                        id: result.insertId,
+                        amount: amount,
+                        description: description,
+                        category: category,
+                        user_id: userId
+                    }
                 });
             }
+        );
+    }
+);
 
-            return res.status(201).json({
-                message: "Expense added successfully",
-                expense: {
-                    id: result.insertId,
-                    amount: amount,
-                    description: description,
-                    category: category
+// ==================== GET USER EXPENSES ====================
+
+// authenticate middleware runs first
+app.get(
+    "/api/expenses",
+    authenticate,
+    (req, res) => {
+
+        // Get logged-in user ID from token
+        const userId = req.user.userId;
+
+        // Fetch ONLY this user's expenses
+        const getExpensesSql = `
+            SELECT *
+            FROM expenses
+            WHERE user_id = ?
+            ORDER BY id DESC
+        `;
+
+        db.query(
+            getExpensesSql,
+            [userId],
+            (err, results) => {
+
+                if (err) {
+
+                    console.log(
+                        "Error fetching expenses:",
+                        err
+                    );
+
+                    return res.status(500).json({
+                        message:
+                            "Could not fetch expenses"
+                    });
                 }
-            });
-        }
-    );
-});
 
-// ==================== GET ALL EXPENSES ====================
+                return res.status(200).json(results);
+            }
+        );
+    }
+);
 
-// Fetch expenses from database
-app.get("/api/expenses", (req, res) => {
+// ==================== DELETE EXPENSE ====================
 
-    const getExpensesSql = `
-        SELECT * FROM expenses
-        ORDER BY id DESC
-    `;
+// Only delete expense belonging
+// to the logged-in user
+app.delete(
+    "/api/expenses/:id",
+    authenticate,
+    (req, res) => {
 
-    db.query(getExpensesSql, (err, results) => {
+        const expenseId = req.params.id;
 
-        if (err) {
-            console.log("Error fetching expenses:", err);
+        // Get user ID from verified token
+        const userId = req.user.userId;
 
-            return res.status(500).json({
-                message: "Could not fetch expenses"
-            });
-        }
+        const deleteExpenseSql = `
+            DELETE FROM expenses
+            WHERE id = ?
+            AND user_id = ?
+        `;
 
-        return res.status(200).json(results);
-    });
-});
+        db.query(
+            deleteExpenseSql,
+            [expenseId, userId],
+            (err, result) => {
+
+                if (err) {
+
+                    console.log(
+                        "Error deleting expense:",
+                        err
+                    );
+
+                    return res.status(500).json({
+                        message:
+                            "Expense could not be deleted"
+                    });
+                }
+
+                // Expense doesn't exist
+                // or belongs to another user
+                if (result.affectedRows === 0) {
+
+                    return res.status(403).json({
+                        message:
+                            "You are not authorized to delete this expense"
+                    });
+                }
+
+                return res.status(200).json({
+                    message:
+                        "Expense deleted successfully"
+                });
+            }
+        );
+    }
+);
 
 // ==================== START SERVER ====================
 
