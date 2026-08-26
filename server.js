@@ -3,10 +3,13 @@ const path = require("path");
 const mysql = require("mysql2");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-
+const dotenv = require("dotenv");
+const cashfree = require("./services/cashfreeService");
 const authenticate = require("./middleware/auth");
 
+
 const app = express();
+
 
 // ==================== DATABASE CONNECTION ====================
 
@@ -25,6 +28,7 @@ db.connect((err) => {
     }
 });
 
+
 // ==================== MIDDLEWARE ====================
 
 // Read normal HTML form data
@@ -33,20 +37,25 @@ app.use(express.urlencoded({ extended: true }));
 // Read JSON data
 app.use(express.json());
 
+
 // ==================== HOME ====================
 
 app.get("/", (req, res) => {
     res.send("Hello Expense App!");
 });
 
+
 // ==================== SIGNUP ====================
 
 // Show signup page
 app.get("/signup", (req, res) => {
+
     res.sendFile(
         path.join(__dirname, "public", "signup.html")
     );
+
 });
+
 
 // Handle signup
 app.post("/signup", (req, res) => {
@@ -63,12 +72,18 @@ app.post("/signup", (req, res) => {
 
             if (err) {
                 console.log("Error:", err);
-                return res.status(500).send("Something went wrong");
+
+                return res.status(500).send(
+                    "Something went wrong"
+                );
             }
 
             // User already exists
             if (results.length > 0) {
-                return res.send("User already exists");
+
+                return res.send(
+                    "User already exists"
+                );
             }
 
             try {
@@ -77,22 +92,40 @@ app.post("/signup", (req, res) => {
                 const hashedPassword =
                     await bcrypt.hash(password, 10);
 
+
                 const insertUserSql = `
-                    INSERT INTO users (name, email, password)
+                    INSERT INTO users
+                    (name, email, password)
                     VALUES (?, ?, ?)
                 `;
 
+
                 db.query(
                     insertUserSql,
-                    [name, email, hashedPassword],
+                    [
+                        name,
+                        email,
+                        hashedPassword
+                    ],
                     (err, result) => {
 
                         if (err) {
-                            console.log("Error:", err);
-                            return res.status(500).send("Signup failed");
+
+                            console.log(
+                                "Error:",
+                                err
+                            );
+
+                            return res.status(500).send(
+                                "Signup failed"
+                            );
                         }
 
-                        console.log("User created successfully!");
+
+                        console.log(
+                            "User created successfully!"
+                        );
+
 
                         return res.send(`
                             <h1>Signup Successful!</h1>
@@ -118,22 +151,32 @@ app.post("/signup", (req, res) => {
     );
 });
 
+
 // ==================== LOGIN ====================
 
 // Show login page
 app.get("/login", (req, res) => {
+
     res.sendFile(
-        path.join(__dirname, "public", "login.html")
+        path.join(
+            __dirname,
+            "public",
+            "login.html"
+        )
     );
+
 });
+
 
 // Handle login
 app.post("/login", (req, res) => {
 
     const { email, password } = req.body;
 
+
     const checkUserSql =
         "SELECT * FROM users WHERE email = ?";
+
 
     db.query(
         checkUserSql,
@@ -141,40 +184,51 @@ app.post("/login", (req, res) => {
         async (err, results) => {
 
             if (err) {
-                console.log("Error:", err);
+
+                console.log(
+                    "Error:",
+                    err
+                );
 
                 return res.status(500).json({
-                    message: "Something went wrong"
+                    message:
+                        "Something went wrong"
                 });
             }
+
 
             // User not found
             if (results.length === 0) {
 
                 return res.status(404).json({
-                    message: "User not found"
+                    message:
+                        "User not found"
                 });
             }
+
 
             try {
 
                 const user = results[0];
 
-                // Compare entered password
-                // with bcrypt hashed password
+
+                // Compare password
                 const isPasswordMatch =
                     await bcrypt.compare(
                         password,
                         user.password
                     );
 
+
                 // Password incorrect
                 if (!isPasswordMatch) {
 
                     return res.status(401).json({
-                        message: "User not authorized"
+                        message:
+                            "User not authorized"
                     });
                 }
+
 
                 // ====================
                 // GENERATE JWT TOKEN
@@ -191,15 +245,18 @@ app.post("/login", (req, res) => {
                     }
                 );
 
+
                 console.log(
                     "User logged in successfully"
                 );
 
-                // Send token to frontend
+
                 return res.status(200).json({
-                    message: "Login successful",
+                    message:
+                        "Login successful",
                     token: token
                 });
+
 
             } catch (error) {
 
@@ -209,16 +266,17 @@ app.post("/login", (req, res) => {
                 );
 
                 return res.status(500).json({
-                    message: "Something went wrong"
+                    message:
+                        "Something went wrong"
                 });
             }
         }
     );
 });
 
+
 // ==================== EXPENSE PAGE ====================
 
-// Show expense page
 app.get("/expenses", (req, res) => {
 
     res.sendFile(
@@ -228,11 +286,12 @@ app.get("/expenses", (req, res) => {
             "expense.html"
         )
     );
+
 });
+
 
 // ==================== ADD EXPENSE ====================
 
-// authenticate middleware runs first
 app.post(
     "/api/expenses",
     authenticate,
@@ -244,23 +303,32 @@ app.post(
             category
         } = req.body;
 
+
         // Get logged-in user ID
-        // from verified JWT token
-        const userId = req.user.userId;
+        const userId =
+            req.user.userId;
+
 
         // Validate fields
-        if (!amount || !description || !category) {
+        if (
+            !amount ||
+            !description ||
+            !category
+        ) {
 
             return res.status(400).json({
-                message: "All fields are required"
+                message:
+                    "All fields are required"
             });
         }
+
 
         const insertExpenseSql = `
             INSERT INTO expenses
             (amount, description, category, user_id)
             VALUES (?, ?, ?, ?)
         `;
+
 
         db.query(
             insertExpenseSql,
@@ -285,6 +353,7 @@ app.post(
                     });
                 }
 
+
                 return res.status(201).json({
 
                     message:
@@ -303,24 +372,25 @@ app.post(
     }
 );
 
+
 // ==================== GET USER EXPENSES ====================
 
-// authenticate middleware runs first
 app.get(
     "/api/expenses",
     authenticate,
     (req, res) => {
 
-        // Get logged-in user ID from token
-        const userId = req.user.userId;
+        const userId =
+            req.user.userId;
 
-        // Fetch ONLY this user's expenses
+
         const getExpensesSql = `
             SELECT *
             FROM expenses
             WHERE user_id = ?
             ORDER BY id DESC
         `;
+
 
         db.query(
             getExpensesSql,
@@ -340,25 +410,29 @@ app.get(
                     });
                 }
 
-                return res.status(200).json(results);
+
+                return res.status(200).json(
+                    results
+                );
             }
         );
     }
 );
 
+
 // ==================== DELETE EXPENSE ====================
 
-// Only delete expense belonging
-// to the logged-in user
 app.delete(
     "/api/expenses/:id",
     authenticate,
     (req, res) => {
 
-        const expenseId = req.params.id;
+        const expenseId =
+            req.params.id;
 
-        // Get user ID from verified token
-        const userId = req.user.userId;
+        const userId =
+            req.user.userId;
+
 
         const deleteExpenseSql = `
             DELETE FROM expenses
@@ -366,9 +440,13 @@ app.delete(
             AND user_id = ?
         `;
 
+
         db.query(
             deleteExpenseSql,
-            [expenseId, userId],
+            [
+                expenseId,
+                userId
+            ],
             (err, result) => {
 
                 if (err) {
@@ -384,15 +462,17 @@ app.delete(
                     });
                 }
 
-                // Expense doesn't exist
-                // or belongs to another user
-                if (result.affectedRows === 0) {
+
+                if (
+                    result.affectedRows === 0
+                ) {
 
                     return res.status(403).json({
                         message:
                             "You are not authorized to delete this expense"
                     });
                 }
+
 
                 return res.status(200).json({
                     message:
@@ -403,8 +483,91 @@ app.delete(
     }
 );
 
+app.post(
+    "/api/premium/create-order",
+    authenticate,
+    async (req, res) => {
+
+        try {
+            const userId = req.user.userId;
+            const orderId = "order_" + Date.now();
+            const amount = 1.00;
+
+            const insertOrderSql = `
+                INSERT INTO orders
+                (order_id, user_id, amount, status)
+                VALUES (?, ?, ?, ?)
+            `;
+
+            db.query(
+                insertOrderSql,
+                [orderId, userId, amount, "PENDING"],
+                async (err) => {
+
+                    if (err) {
+                        console.log("Database order error:", err);
+
+                        return res.status(500).json({
+                            message: "Could not create order"
+                        });
+                    }
+
+                    const request = {
+                        order_amount: amount,
+                        order_currency: "INR",
+                        order_id: orderId,
+
+                        customer_details: {
+                            customer_id: String(userId),
+                            customer_phone: "9999999999"
+                        }
+                    };
+
+                    try {
+                        const response =
+                            await cashfree.PGCreateOrder(request);
+
+                        return res.status(200).json({
+                            message: "Order created successfully",
+                            orderId: orderId,
+                            paymentSessionId:
+                                response.data.payment_session_id
+                        });
+
+                    } catch (error) {
+
+                        console.log(
+                            "Cashfree order error:",
+                            error.response?.data || error.message
+                        );
+
+                        return res.status(500).json({
+                            message: "Cashfree order creation failed"
+                        });
+                    }
+                }
+            );
+
+        } catch (error) {
+
+            console.log(
+                "Create order error:",
+                error
+            );
+
+            return res.status(500).json({
+                message: "Something went wrong"
+            });
+        }
+    }
+);
+
 // ==================== START SERVER ====================
 
 app.listen(3000, () => {
-    console.log("Server is running on port 3000");
+
+    console.log(
+        "Server is running on port 3000"
+    );
+
 });
