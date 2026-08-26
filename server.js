@@ -519,7 +519,7 @@ app.post(
 
                         customer_details: {
                             customer_id: String(userId),
-                            customer_phone: "9999999999"
+                            customer_phone: "7992219187"
                         }
                     };
 
