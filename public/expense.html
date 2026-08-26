@@ -565,7 +565,7 @@
                                 "_self"
                         };
 
-
+                        localStorage.setItem("premiumOrderId", data.orderId);
                         cashfree.checkout(
                             checkoutOptions
                         );
@@ -587,6 +587,54 @@
 
                 }
             );
+
+            // ==================== VERIFY PREMIUM PAYMENT ====================
+
+window.addEventListener("load", async () => {
+
+    const orderId =
+        localStorage.getItem("premiumOrderId");
+
+    if (!orderId) {
+        return;
+    }
+
+    // Remove immediately so verification happens only once
+    localStorage.removeItem("premiumOrderId");
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/premium/verify-payment/${orderId}`,
+                {
+                    headers: {
+                        "Authorization":
+                            `Bearer ${token}`
+                    }
+                }
+            );
+
+        const data = await response.json();
+
+        if (data.success) {
+
+            alert("Transaction successful");
+
+        } else {
+
+            alert("TRANSACTION FAILED");
+
+        }
+
+    } catch (error) {
+
+        console.log(
+            "Payment verification error:",
+            error
+        );
+    }
+});
 
     </script>
 

@@ -520,8 +520,12 @@ app.post(
                         customer_details: {
                             customer_id: String(userId),
                             customer_phone: "7992219187"
+                        },
+                            order_meta: {
+                            return_url:
+                            "https://www.cashfree.com/devstudio/preview/pg/web/checkout?order_id={order_id}"
                         }
-                    };
+                        };
 
                     try {
                         const response =
@@ -557,6 +561,149 @@ app.post(
 
             return res.status(500).json({
                 message: "Something went wrong"
+            });
+        }
+    }
+);
+
+// ==================== VERIFY PREMIUM PAYMENT ====================
+
+app.get(
+    "/api/premium/verify-payment/:orderId",
+    authenticate,
+    async (req, res) => {
+
+        try {
+
+            const orderId = req.params.orderId;
+            const userId = req.user.userId;
+
+            // Check payment status from Cashfree
+            const response =
+                await cashfree.PGOrderFetchPayments(orderId);
+
+            const payments = response.data;
+
+            // Check if any payment is successful
+            const successfulPayment = payments.find(
+                (payment) =>
+                    payment.payment_status === "SUCCESS"
+            );
+
+
+            // ==================== PAYMENT SUCCESS ====================
+
+            if (successfulPayment) {
+
+                // Update order status
+                const updateOrderSql = `
+                    UPDATE orders
+                    SET status = 'SUCCESSFUL'
+                    WHERE order_id = ?
+                    AND user_id = ?
+                `;
+
+                db.query(
+                    updateOrderSql,
+                    [orderId, userId],
+                    (err) => {
+
+                        if (err) {
+
+                            console.log(
+                                "Order update error:",
+                                err
+                            );
+
+                            return res.status(500).json({
+                                message:
+                                    "Could not update order"
+                            });
+                        }
+
+
+                        // Make current user premium
+                        const updateUserSql = `
+                            UPDATE users
+                            SET is_premium = 1
+                            WHERE id = ?
+                        `;
+
+                        db.query(
+                            updateUserSql,
+                            [userId],
+                            (err) => {
+
+                                if (err) {
+
+                                    console.log(
+                                        "User premium update error:",
+                                        err
+                                    );
+
+                                    return res.status(500).json({
+                                        message:
+                                            "Could not make user premium"
+                                    });
+                                }
+
+
+                                return res.status(200).json({
+                                    success: true,
+                                    message:
+                                        "Transaction successful"
+                                });
+                            }
+                        );
+                    }
+                );
+
+
+            // ==================== PAYMENT FAILED ====================
+
+            } else {
+
+                const failedOrderSql = `
+                    UPDATE orders
+                    SET status = 'FAILED'
+                    WHERE order_id = ?
+                    AND user_id = ?
+                `;
+
+                db.query(
+                    failedOrderSql,
+                    [orderId, userId],
+                    (err) => {
+
+                        if (err) {
+
+                            console.log(
+                                "Failed order update error:",
+                                err
+                            );
+                        }
+
+
+                        return res.status(400).json({
+                            success: false,
+                            message:
+                                "TRANSACTION FAILED"
+                        });
+                    }
+                );
+            }
+
+
+        } catch (error) {
+
+            console.log(
+                "Payment verification error:",
+                error.response?.data || error.message
+            );
+
+            return res.status(500).json({
+                message:
+                    "Payment verification failed"
             });
         }
     }
