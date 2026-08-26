@@ -116,6 +116,19 @@
             background-color: #b02a37;
         }
 
+        .leaderboard-btn {
+    width: auto;
+    padding: 8px 15px;
+    margin-top: 0;
+    margin-bottom: 20px;
+    background-color: #6f42c1;
+    font-size: 14px;
+    }
+
+    .leaderboard-btn:hover {
+    background-color: #59359c;
+    }
+
     </style>
 </head>
 
@@ -125,6 +138,18 @@
 
         <button id="premiumBtn" class="premium-btn">
             Buy Premium Membership
+        </button>
+
+        <h1 id="premiumMessage" style="display: none;">
+           You are a premium user now
+        </h1>
+
+        <button
+        id="leaderboardBtn"
+        class="leaderboard-btn"
+        style="display: none;"
+>
+        Show Leaderboard
         </button>
 
         <h1>Daily Expenses</h1>
@@ -211,6 +236,33 @@
 
         </div>
 
+        <!-- LEADERBOARD -->
+
+<div
+    id="leaderboardContainer"
+    class="expense-table"
+    style="display: none;"
+>
+
+    <h2>Leaderboard</h2>
+
+    <table>
+
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Name</th>
+                <th>Total Expenses</th>
+            </tr>
+        </thead>
+
+        <tbody id="leaderboardList">
+        </tbody>
+
+    </table>
+
+</div>
+
     </div>
 
 
@@ -231,17 +283,20 @@
 
         }
 
-
         // Get expense form
         const expenseForm =
             document.getElementById("expenseForm");
 
-
         // Load expenses when page opens
+
         window.addEventListener(
-            "load",
-            loadExpenses
-        );
+        "load",
+        () => {
+        loadExpenses();
+        checkPremiumStatus();
+    }
+);
+       
 
 
         // ==================== ADD EXPENSE ====================
@@ -635,6 +690,118 @@ window.addEventListener("load", async () => {
         );
     }
 });
+
+// ==================== CHECK PREMIUM STATUS ====================
+
+async function checkPremiumStatus() {
+
+    try {
+
+        const response = await fetch(
+            "/api/user/premium-status",
+            {
+                headers: {
+                    "Authorization":
+                        `Bearer ${token}`
+                }
+            }
+        );
+
+        const data = await response.json();
+
+        if (data.isPremium) {
+
+            document
+                .getElementById("premiumMessage")
+                .style.display = "block";
+
+            document
+                .getElementById("premiumBtn")
+                .style.display = "none";
+
+            document
+               .getElementById("leaderboardBtn")
+               .style.display = "block";
+        }
+
+    } catch (error) {
+
+        console.log(
+            "Error checking premium status:",
+            error
+        );
+    }
+}
+
+// ==================== SHOW LEADERBOARD ====================
+
+document
+    .getElementById("leaderboardBtn")
+    .addEventListener(
+        "click",
+        async () => {
+
+            try {
+
+                const response = await fetch(
+                    "/api/premium/leaderboard",
+                    {
+                        headers: {
+                            "Authorization":
+                                `Bearer ${token}`
+                        }
+                    }
+                );
+
+                const data =
+                    await response.json();
+
+                if (!response.ok) {
+
+                    alert(data.message);
+                    return;
+                }
+
+                const leaderboardContainer =
+                    document.getElementById(
+                        "leaderboardContainer"
+                    );
+
+                const leaderboardList =
+                    document.getElementById(
+                        "leaderboardList"
+                    );
+
+                leaderboardList.innerHTML = "";
+
+                data.forEach(
+                    (user, index) => {
+
+                        const row =
+                            document.createElement("tr");
+
+                        row.innerHTML = `
+                            <td>${index + 1}</td>
+                            <td>${user.name}</td>
+                            <td>₹${user.totalExpenses}</td>
+                        `;
+
+                        leaderboardList.appendChild(row);
+                    }
+                );
+
+                leaderboardContainer.style.display =
+                    "block";
+
+            } catch (error) {
+
+                console.log(
+                    "Leaderboard error:",
+                    error
+                );
+            }
+        }
+    );
 
     </script>
 

@@ -709,6 +709,128 @@ app.get(
     }
 );
 
+// ==================== CHECK PREMIUM STATUS ====================
+
+app.get(
+    "/api/user/premium-status",
+    authenticate,
+    (req, res) => {
+
+        const userId = req.user.userId;
+
+        const getUserSql = `
+            SELECT is_premium
+            FROM users
+            WHERE id = ?
+        `;
+
+        db.query(
+            getUserSql,
+            [userId],
+            (err, results) => {
+
+                if (err) {
+                    console.log(
+                        "Error checking premium status:",
+                        err
+                    );
+
+                    return res.status(500).json({
+                        message:
+                            "Could not check premium status"
+                    });
+                }
+
+                if (results.length === 0) {
+                    return res.status(404).json({
+                        message: "User not found"
+                    });
+                }
+
+                return res.status(200).json({
+                    isPremium:
+                        results[0].is_premium === 1
+                });
+            }
+        );
+    }
+);
+
+// ==================== PREMIUM LEADERBOARD ====================
+
+app.get(
+    "/api/premium/leaderboard",
+    authenticate,
+    (req, res) => {
+
+        const userId = req.user.userId;
+
+        const checkPremiumSql = `
+            SELECT is_premium
+            FROM users
+            WHERE id = ?
+        `;
+
+        db.query(
+            checkPremiumSql,
+            [userId],
+            (err, results) => {
+
+                if (err) {
+                    return res.status(500).json({
+                        message: "Could not check premium status"
+                    });
+                }
+
+                if (
+                    results.length === 0 ||
+                    results[0].is_premium !== 1
+                ) {
+                    return res.status(403).json({
+                        message: "Only premium users can access the leaderboard"
+                    });
+                }
+
+                const leaderboardSql = `
+                    SELECT
+                        users.name,
+                        SUM(expenses.amount) AS totalExpenses
+
+                    FROM users
+
+                    INNER JOIN expenses
+                    ON users.id = expenses.user_id
+
+                    GROUP BY
+                        users.id,
+                        users.name
+
+                    ORDER BY
+                        totalExpenses DESC
+                `;
+
+                db.query(
+                    leaderboardSql,
+                    (err, leaderboard) => {
+
+                        if (err) {
+                            console.log(err);
+
+                            return res.status(500).json({
+                                message: "Could not load leaderboard"
+                            });
+                        }
+
+                        return res.status(200).json(
+                            leaderboard
+                        );
+                    }
+                );
+            }
+        );
+    }
+);
+
 // ==================== START SERVER ====================
 
 app.listen(3000, () => {
