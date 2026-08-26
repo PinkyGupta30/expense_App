@@ -96,10 +96,12 @@
             Sign in to start managing your expenses
         </p>
 
-        <!-- No action and method here because JavaScript handles login -->
+
         <form id="loginForm">
 
-            <label for="email">Email</label>
+            <label for="email">
+                Email
+            </label>
 
             <input
                 id="email"
@@ -108,7 +110,10 @@
                 required
             >
 
-            <label for="password">Password</label>
+
+            <label for="password">
+                Password
+            </label>
 
             <input
                 id="password"
@@ -117,15 +122,19 @@
                 required
             >
 
+
             <button type="submit">
                 Log In
             </button>
 
         </form>
 
+
         <p class="new-user">
             Create an account?
-            <a href="/signup">Sign up</a>
+            <a href="/signup">
+                Sign up
+            </a>
         </p>
 
     </div>
@@ -133,73 +142,67 @@
 
     <script>
 
-        // Get login form
         const loginForm =
             document.getElementById("loginForm");
 
 
-        // When user submits login form
         loginForm.addEventListener(
             "submit",
             async (event) => {
 
-                // Stop normal form submission
                 event.preventDefault();
 
 
-                // Get email value
                 const email =
                     document.getElementById("email").value;
 
 
-                // Get password value
                 const password =
                     document.getElementById("password").value;
 
 
                 try {
 
-                    // Send login request to backend
                     const response =
-                        await fetch("/login", {
+                        await fetch(
+                            "/api/user/login",
+                            {
+                                method: "POST",
 
-                            method: "POST",
+                                headers: {
+                                    "Content-Type":
+                                        "application/json"
+                                },
 
-                            headers: {
-                                "Content-Type":
-                                    "application/json"
-                            },
-
-                            body: JSON.stringify({
-                                email: email,
-                                password: password
-                            })
-                        });
+                                body: JSON.stringify({
+                                    email: email,
+                                    password: password
+                                })
+                            }
+                        );
 
 
-                    // Get response from backend
                     const data =
                         await response.json();
 
 
-                    // If login successful
                     if (response.ok) {
 
-                        // Save JWT token in browser
                         localStorage.setItem(
                             "token",
                             data.token
                         );
 
 
-                        // Open expense page
                         window.location.href =
-                            "/expenses";
+                            "/expense";
 
                     } else {
 
-                        // Show backend error
-                        alert(data.message);
+                        alert(
+                            data.message ||
+                            "Unable to login"
+                        );
                     }
 
                 } catch (error) {
@@ -209,8 +212,9 @@
                         error
                     );
 
+
                     alert(
-                        "Something went wrong"
+                        "Something went wrong. Please try again."
                     );
                 }
             }

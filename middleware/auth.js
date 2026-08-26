@@ -2,34 +2,30 @@ const jwt = require("jsonwebtoken");
 
 const authenticate = (req, res, next) => {
     try {
-        const authHeader = req.headers.authorization;
-
-        if (!authHeader) {
-            return res.status(401).json({
-                message: "Please login first"
-            });
-        }
-
-        const token = authHeader.split(" ")[1];
+        const token = req.header("Authorization");
 
         if (!token) {
             return res.status(401).json({
-                message: "Token not found"
+                message: "Authentication failed"
             });
         }
 
-        const decodedUser = jwt.verify(
-            token,
-            "my_secret_key"
+        const jwtToken = token.replace("Bearer ", "");
+
+        const decodedToken = jwt.verify(
+            jwtToken,
+            process.env.JWT_SECRET || "secretkey"
         );
 
-        req.user = decodedUser;
+        req.user = decodedToken;
 
         next();
 
     } catch (error) {
+        console.log("Authentication error:", error);
+
         return res.status(401).json({
-            message: "Invalid or expired token"
+            message: "Authentication failed"
         });
     }
 };
