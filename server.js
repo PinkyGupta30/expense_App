@@ -756,6 +756,7 @@ app.get(
     }
 );
 
+
 // ==================== PREMIUM LEADERBOARD ====================
 
 app.get(
@@ -765,67 +766,44 @@ app.get(
 
         const userId = req.user.userId;
 
-        const checkPremiumSql = `
-            SELECT is_premium
+        const leaderboardSql = `
+            SELECT
+                users.name,
+                SUM(expenses.amount) AS totalExpenses
             FROM users
-            WHERE id = ?
+            INNER JOIN expenses
+                ON users.id = expenses.user_id
+            WHERE EXISTS (
+                SELECT 1
+                FROM users
+                WHERE id = ?
+                AND is_premium = 1
+            )
+            GROUP BY users.id, users.name
+            ORDER BY totalExpenses DESC
         `;
 
         db.query(
-            checkPremiumSql,
+            leaderboardSql,
             [userId],
-            (err, results) => {
+            (err, leaderboard) => {
 
                 if (err) {
+                    console.log("Leaderboard error:", err);
+
                     return res.status(500).json({
-                        message: "Could not check premium status"
+                        message: "Could not load leaderboard"
                     });
                 }
 
-                if (
-                    results.length === 0 ||
-                    results[0].is_premium !== 1
-                ) {
+                if (leaderboard.length === 0) {
                     return res.status(403).json({
-                        message: "Only premium users can access the leaderboard"
+                        message:
+                            "Only premium users can access the leaderboard"
                     });
                 }
 
-                const leaderboardSql = `
-                    SELECT
-                        users.name,
-                        SUM(expenses.amount) AS totalExpenses
-
-                    FROM users
-
-                    INNER JOIN expenses
-                    ON users.id = expenses.user_id
-
-                    GROUP BY
-                        users.id,
-                        users.name
-
-                    ORDER BY
-                        totalExpenses DESC
-                `;
-
-                db.query(
-                    leaderboardSql,
-                    (err, leaderboard) => {
-
-                        if (err) {
-                            console.log(err);
-
-                            return res.status(500).json({
-                                message: "Could not load leaderboard"
-                            });
-                        }
-
-                        return res.status(200).json(
-                            leaderboard
-                        );
-                    }
-                );
+                return res.status(200).json(leaderboard);
             }
         );
     }
