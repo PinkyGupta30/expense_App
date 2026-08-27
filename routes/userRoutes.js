@@ -18,5 +18,10 @@ router.post(
     userController.login
 );
 
+router.post(
+    "/forgotpassword",
+    userController.forgotPassword
+);
+
 
 module.exports = router;

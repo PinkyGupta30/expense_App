@@ -75,6 +75,12 @@ app.get("/login", (req, res) => {
     );
 });
 
+app.get("/forgotpassword", (req, res) => {
+    res.sendFile(
+        __dirname + "/public/forgotPassword.html"
+    );
+});
+
 
 // Signup page
 app.get("/signup", (req, res) => {
@@ -104,6 +110,11 @@ app.get("/expense", (req, res) => {
 
 app.use(
     "/api/user",
+    userRoutes
+);
+
+app.use(
+    "/password",
     userRoutes
 );
 

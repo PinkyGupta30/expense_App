@@ -124,3 +124,52 @@ exports.login = async (req, res) => {
         });
     }
 };
+// ==================== FORGOT PASSWORD ====================
+
+exports.forgotPassword = async (req, res) => {
+
+    try {
+
+        const { email } = req.body;
+
+
+        // Check if user exists
+        const user = await User.findOne({
+            where: {
+                email: email
+            }
+        });
+
+
+        if (!user) {
+
+            return res.status(404).json({
+                message: "User not found"
+            });
+        }
+
+
+        console.log(
+            "Forgot password request for:",
+            email
+        );
+
+
+        return res.status(200).json({
+            message: "Email received successfully"
+        });
+
+
+    } catch (error) {
+
+        console.log(
+            "Forgot password error:",
+            error
+        );
+
+
+        return res.status(500).json({
+            message: "Something went wrong"
+        });
+    }
+};
