@@ -1,0 +1,9 @@
+{
+    "development": {
+        "username": "root",
+        "password": "root",
+        "database": "expense_app",
+        "host": "localhost",
+        "dialect": "mysql"
+    }
+}

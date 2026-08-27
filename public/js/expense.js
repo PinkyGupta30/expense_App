@@ -12,9 +12,6 @@ let currentPage =
     1;
 
 
-// Get saved page size from localStorage
-// Default is 10
-
 let expensesPerPage =
     Number(
         localStorage.getItem(
@@ -46,52 +43,6 @@ const descriptionInput =
     );
 
 
-const pageSizeSelect =
-    document.getElementById(
-        "pageSize"
-    );
-
-
-// ==================== SET SAVED PAGE SIZE ====================
-
-if (pageSizeSelect) {
-
-    pageSizeSelect.value =
-        expensesPerPage;
-
-
-    pageSizeSelect.addEventListener(
-        "change",
-        () => {
-
-            expensesPerPage =
-                Number(
-                    pageSizeSelect.value
-                );
-
-
-            // Save user's preference
-
-            localStorage.setItem(
-                "expensesPerPage",
-                expensesPerPage
-            );
-
-
-            // Go back to first page
-
-            currentPage =
-                1;
-
-
-            loadExpenses(
-                currentPage
-            );
-        }
-    );
-}
-
-
 // ==================== SUGGEST CATEGORY ====================
 
 descriptionInput.addEventListener(
@@ -101,10 +52,12 @@ descriptionInput.addEventListener(
         const description =
             descriptionInput.value;
 
+
         if (!description) {
 
             return;
         }
+
 
         try {
 
@@ -112,7 +65,8 @@ descriptionInput.addEventListener(
                 await fetch(
                     "/api/expenses/suggest-category",
                     {
-                        method: "POST",
+                        method:
+                            "POST",
 
                         headers: {
                             "Content-Type":
@@ -142,7 +96,7 @@ descriptionInput.addEventListener(
                         "category"
                     )
                     .value =
-                    data.category;
+                        data.category;
             }
 
         } catch (error) {
@@ -189,13 +143,22 @@ expenseForm.addEventListener(
                 .value;
 
 
+        const note =
+            document
+                .getElementById(
+                    "note"
+                )
+                .value;
+
+
         try {
 
             const response =
                 await fetch(
                     "/api/expenses",
                     {
-                        method: "POST",
+                        method:
+                            "POST",
 
                         headers: {
                             "Content-Type":
@@ -207,6 +170,7 @@ expenseForm.addEventListener(
 
                         body:
                             JSON.stringify({
+
                                 amount:
                                     amount,
 
@@ -214,7 +178,10 @@ expenseForm.addEventListener(
                                     description,
 
                                 category:
-                                    category
+                                    category,
+
+                                note:
+                                    note
                             })
                     }
                 );
@@ -233,8 +200,6 @@ expenseForm.addEventListener(
 
                 expenseForm.reset();
 
-
-                // Go to first page after adding
 
                 currentPage =
                     1;
@@ -322,10 +287,6 @@ async function loadExpenses(
             data.lastPage;
 
 
-        // Edge case:
-        // If current page no longer exists
-        // after deleting an expense
-
         if (
             expenses.length === 0 &&
             currentPage > 1 &&
@@ -345,13 +306,9 @@ async function loadExpenses(
         }
 
 
-        // Store currently loaded expenses
-
         window.allExpenses =
             expenses;
 
-
-        // Get table body
 
         const expenseList =
             document.getElementById(
@@ -378,7 +335,7 @@ async function loadExpenses(
             row.innerHTML = `
 
                 <td
-                    colspan="4"
+                    colspan="5"
                     style="text-align: center;"
                 >
                     No expenses found
@@ -413,6 +370,10 @@ async function loadExpenses(
 
                         <td>
                             ${expense.category}
+                        </td>
+
+                        <td>
+                            ${expense.note || ""}
                         </td>
 
                         <td>
@@ -479,12 +440,15 @@ function showPagination(
         );
 
 
+    if (!pagination) {
+
+        return;
+    }
+
+
     pagination.innerHTML =
         "";
 
-
-    // If there is only one page,
-    // no need to show pagination
 
     if (
         lastPage <= 1
@@ -494,7 +458,7 @@ function showPagination(
     }
 
 
-    // ==================== PREVIOUS BUTTON ====================
+    // Previous button
 
     const previousButton =
         document.createElement(
@@ -531,7 +495,7 @@ function showPagination(
     );
 
 
-    // ==================== PAGE NUMBER BUTTONS ====================
+    // Page buttons
 
     for (
         let page = 1;
@@ -549,15 +513,12 @@ function showPagination(
             page;
 
 
-        // Highlight current page
-
         if (
             page === currentPageNumber
         ) {
 
-            pageButton.classList.add(
-                "active-page"
-            );
+            pageButton.disabled =
+                true;
         }
 
 
@@ -578,7 +539,7 @@ function showPagination(
     }
 
 
-    // ==================== NEXT BUTTON ====================
+    // Next button
 
     const nextButton =
         document.createElement(
@@ -612,6 +573,23 @@ function showPagination(
 
     pagination.appendChild(
         nextButton
+    );
+
+
+    // Last page text
+
+    const lastPageText =
+        document.createElement(
+            "span"
+        );
+
+
+    lastPageText.textContent =
+        ` Last Page: ${lastPage}`;
+
+
+    pagination.appendChild(
+        lastPageText
     );
 }
 
@@ -650,8 +628,6 @@ async function deleteExpense(
             );
 
 
-            // Reload current page
-
             loadExpenses(
                 currentPage
             );
@@ -673,6 +649,48 @@ async function deleteExpense(
 }
 
 
+// ==================== EXPENSES PER PAGE ====================
+
+const expensesPerPageSelect =
+    document.getElementById(
+        "expensesPerPage"
+    );
+
+
+if (expensesPerPageSelect) {
+
+    expensesPerPageSelect.value =
+        expensesPerPage;
+
+
+    expensesPerPageSelect.addEventListener(
+        "change",
+        () => {
+
+            expensesPerPage =
+                Number(
+                    expensesPerPageSelect.value
+                );
+
+
+            localStorage.setItem(
+                "expensesPerPage",
+                expensesPerPage
+            );
+
+
+            currentPage =
+                1;
+
+
+            loadExpenses(
+                currentPage
+            );
+        }
+    );
+}
+
+
 // ==================== MAKE FUNCTIONS GLOBAL ====================
 
 window.loadExpenses =
@@ -681,10 +699,6 @@ window.loadExpenses =
 
 window.deleteExpense =
     deleteExpense;
-
-
-window.showPagination =
-    showPagination;
 
 
 // ==================== INITIAL PAGE LOAD ====================

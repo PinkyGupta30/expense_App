@@ -3,59 +3,107 @@ const User = require("../models/users");
 const { GoogleGenAI } = require("@google/genai");
 const sequelize = require("../config/database");
 
+
 const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
+    apiKey: process.env.GEMINI_API_KEY,
 });
+
 
 // ==================== ADD EXPENSE ====================
 
 exports.addExpense = async (req, res) => {
-  let transaction;
-  try {
-    transaction = await sequelize.transaction();
 
-    const { amount, description, category } = req.body;
+    let transaction;
 
-    const userId = req.user.userId;
+    try {
 
-    // Create expense
-    const expense = await Expense.create(
-      {
-        amount: amount,
-        description: description,
-        category: category,
-        UserId: userId,
-      },
-      {
-        transaction: transaction,
-      },
-    );
+        transaction =
+            await sequelize.transaction();
 
-    // Update user's total expenses
-    const user = await User.findByPk(userId);
 
-    user.totalExpenses = Number(user.totalExpenses) + Number(amount);
+        const {
+            amount,
+            description,
+            category,
+            note
+        } = req.body;
 
-    await user.save({
-      transaction: transaction,
-    });
-    await transaction.commit();
 
-    return res.status(201).json({
-      message: "Expense added successfully",
-      expense: expense,
-    });
-  } catch (error) {
-    if (transaction) {
-      await transaction.rollback();
+        const userId =
+            req.user.userId;
+
+
+        // Create expense
+
+        const expense =
+            await Expense.create(
+                {
+                    amount: amount,
+
+                    description: description,
+
+                    category: category,
+
+                    note: note,
+
+                    UserId: userId,
+                },
+                {
+                    transaction: transaction,
+                }
+            );
+
+
+        // Update user's total expenses
+
+        const user =
+            await User.findByPk(
+                userId
+            );
+
+
+        user.totalExpenses =
+            Number(user.totalExpenses) +
+            Number(amount);
+
+
+        await user.save({
+            transaction: transaction,
+        });
+
+
+        await transaction.commit();
+
+
+        return res.status(201).json({
+            message:
+                "Expense added successfully",
+
+            expense:
+                expense,
+        });
+
+    } catch (error) {
+
+        if (transaction) {
+
+            await transaction.rollback();
+        }
+
+
+        console.log(
+            "Add expense error:",
+            error
+        );
+
+
+        return res.status(500).json({
+            message:
+                "Could not add expense",
+        });
     }
-    console.log("Add expense error:", error);
-
-    return res.status(500).json({
-      message: "Could not add expense",
-    });
-  }
 };
+
 
 // ==================== GET EXPENSES ====================
 
@@ -82,12 +130,15 @@ exports.getExpenses = async (req, res) => {
             await Expense.findAndCountAll({
 
                 where: {
-                    UserId: req.user.userId
+                    UserId:
+                        req.user.userId
                 },
 
-                limit: limit,
+                limit:
+                    limit,
 
-                offset: offset,
+                offset:
+                    offset,
 
                 order: [
                     ["id", "DESC"]
@@ -103,13 +154,17 @@ exports.getExpenses = async (req, res) => {
 
         return res.status(200).json({
 
-            expenses: rows,
+            expenses:
+                rows,
 
-            currentPage: page,
+            currentPage:
+                page,
 
-            lastPage: lastPage,
+            lastPage:
+                lastPage,
 
-            totalExpenses: count
+            totalExpenses:
+                count
         });
 
     } catch (error) {
@@ -128,72 +183,133 @@ exports.getExpenses = async (req, res) => {
     }
 };
 
+
 // ==================== DELETE EXPENSE ====================
 
 exports.deleteExpense = async (req, res) => {
-  let transaction;
-  try {
-    transaction = await sequelize.transaction();
-    const userId = req.user.userId;
 
-    const expenseId = req.params.id;
+    let transaction;
 
-    // Find expense belonging to logged-in user
-    const expense = await Expense.findOne({
-      where: {
-        id: expenseId,
-        UserId: userId,
-      },
-      transaction: transaction,
-    });
+    try {
 
-    if (!expense) {
-      await transaction.rollback();
+        transaction =
+            await sequelize.transaction();
 
-      return res.status(404).json({
-        message: "Expense not found",
-      });
+
+        const userId =
+            req.user.userId;
+
+
+        const expenseId =
+            req.params.id;
+
+
+        // Find expense belonging to logged-in user
+
+        const expense =
+            await Expense.findOne({
+
+                where: {
+                    id:
+                        expenseId,
+
+                    UserId:
+                        userId,
+                },
+
+                transaction:
+                    transaction,
+            });
+
+
+        if (!expense) {
+
+            await transaction.rollback();
+
+
+            return res.status(404).json({
+                message:
+                    "Expense not found",
+            });
+        }
+
+
+        // Update total expenses before deleting
+
+        const user =
+            await User.findByPk(
+                userId
+            );
+
+
+        user.totalExpenses =
+            Number(user.totalExpenses) -
+            Number(expense.amount);
+
+
+        await user.save({
+            transaction:
+                transaction,
+        });
+
+
+        // Delete expense
+
+        await expense.destroy({
+            transaction:
+                transaction,
+        });
+
+
+        await transaction.commit();
+
+
+        return res.status(200).json({
+            message:
+                "Expense deleted successfully",
+        });
+
+    } catch (error) {
+
+        if (transaction) {
+
+            await transaction.rollback();
+        }
+
+
+        console.log(
+            "Delete expense error:",
+            error
+        );
+
+
+        return res.status(500).json({
+            message:
+                "Could not delete expense",
+        });
     }
-
-    // Update total expenses before deleting
-    const user = await User.findByPk(userId);
-
-    user.totalExpenses = Number(user.totalExpenses) - Number(expense.amount);
-
-    await user.save({
-      transaction: transaction,
-    });
-    // Delete expense
-    await expense.destroy({
-      transaction: transaction,
-    });
-    await transaction.commit();
-    return res.status(200).json({
-      message: "Expense deleted successfully",
-    });
-  } catch (error) {
-    if (transaction) {
-      await transaction.rollback();
-    }
-
-    console.log("Delete expense error:", error);
-
-    return res.status(500).json({
-      message: "Could not delete expense",
-    });
-  }
 };
+
 
 // ==================== SUGGEST CATEGORY ====================
 
 exports.suggestCategory = async (req, res) => {
-  try {
-    const { description } = req.body;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.7-flash",
+    try {
 
-      contents: `
+        const {
+            description
+        } =
+            req.body;
+
+
+        const response =
+            await ai.models.generateContent({
+
+                model:
+                    "gemini-3.7-flash",
+
+                contents: `
 Classify the following expense into exactly one of these categories:
 
 Food
@@ -206,19 +322,30 @@ Other
 Expense description: ${description}
 
 Return only the category name. Do not explain anything.
-`,
-    });
+`
+            });
 
-    const category = response.text.trim();
 
-    return res.status(200).json({
-      category: category,
-    });
-  } catch (error) {
-    console.log("Category suggestion error:", error);
+        const category =
+            response.text.trim();
 
-    return res.status(500).json({
-      message: "Could not suggest category",
-    });
-  }
+
+        return res.status(200).json({
+            category:
+                category,
+        });
+
+    } catch (error) {
+
+        console.log(
+            "Category suggestion error:",
+            error
+        );
+
+
+        return res.status(500).json({
+            message:
+                "Could not suggest category",
+        });
+    }
 };
