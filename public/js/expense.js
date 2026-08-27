@@ -3,13 +3,24 @@
 window.token =
     localStorage.getItem("token");
 
+
 window.allExpenses =
     [];
 
 
-// ==================== PAGINATION ====================
+let currentPage =
+    1;
 
-let currentPage = 1;
+
+// Get saved page size from localStorage
+// Default is 10
+
+let expensesPerPage =
+    Number(
+        localStorage.getItem(
+            "expensesPerPage"
+        )
+    ) || 10;
 
 
 // ==================== CHECK LOGIN ====================
@@ -28,10 +39,57 @@ const expenseForm =
         "expenseForm"
     );
 
+
 const descriptionInput =
     document.getElementById(
         "description"
     );
+
+
+const pageSizeSelect =
+    document.getElementById(
+        "pageSize"
+    );
+
+
+// ==================== SET SAVED PAGE SIZE ====================
+
+if (pageSizeSelect) {
+
+    pageSizeSelect.value =
+        expensesPerPage;
+
+
+    pageSizeSelect.addEventListener(
+        "change",
+        () => {
+
+            expensesPerPage =
+                Number(
+                    pageSizeSelect.value
+                );
+
+
+            // Save user's preference
+
+            localStorage.setItem(
+                "expensesPerPage",
+                expensesPerPage
+            );
+
+
+            // Go back to first page
+
+            currentPage =
+                1;
+
+
+            loadExpenses(
+                currentPage
+            );
+        }
+    );
+}
 
 
 // ==================== SUGGEST CATEGORY ====================
@@ -149,9 +207,14 @@ expenseForm.addEventListener(
 
                         body:
                             JSON.stringify({
-                                amount: amount,
-                                description: description,
-                                category: category
+                                amount:
+                                    amount,
+
+                                description:
+                                    description,
+
+                                category:
+                                    category
                             })
                     }
                 );
@@ -171,8 +234,15 @@ expenseForm.addEventListener(
                 expenseForm.reset();
 
 
-                // Load first page
-                loadExpenses(1);
+                // Go to first page after adding
+
+                currentPage =
+                    1;
+
+
+                loadExpenses(
+                    currentPage
+                );
 
             } else {
 
@@ -195,7 +265,7 @@ expenseForm.addEventListener(
 // ==================== LOAD EXPENSES ====================
 
 async function loadExpenses(
-    page = 1
+    page = currentPage
 ) {
 
     try {
@@ -206,7 +276,7 @@ async function loadExpenses(
 
         const response =
             await fetch(
-                `/api/expenses?page=${page}`,
+                `/api/expenses?page=${currentPage}&limit=${expensesPerPage}`,
                 {
                     headers: {
                         "Authorization":
@@ -248,6 +318,41 @@ async function loadExpenses(
             data.expenses;
 
 
+        const lastPage =
+            data.lastPage;
+
+
+        // Edge case:
+        // If current page no longer exists
+        // after deleting an expense
+
+        if (
+            expenses.length === 0 &&
+            currentPage > 1 &&
+            lastPage < currentPage
+        ) {
+
+            currentPage =
+                lastPage;
+
+
+            loadExpenses(
+                currentPage
+            );
+
+
+            return;
+        }
+
+
+        // Store currently loaded expenses
+
+        window.allExpenses =
+            expenses;
+
+
+        // Get table body
+
         const expenseList =
             document.getElementById(
                 "expenseList"
@@ -258,66 +363,91 @@ async function loadExpenses(
             "";
 
 
-        // Display only expenses returned
-        // Backend returns maximum 10 expenses
+        // ==================== DISPLAY EXPENSES ====================
 
-        expenses.forEach(
-            (expense) => {
+        if (
+            expenses.length === 0
+        ) {
 
-                const row =
-                    document.createElement(
-                        "tr"
-                    );
-
-
-                row.innerHTML = `
-
-                    <td>
-                        ${expense.amount}
-                    </td>
-
-                    <td>
-                        ${expense.description}
-                    </td>
-
-                    <td>
-                        ${expense.category}
-                    </td>
-
-                    <td>
-
-                        <button
-                            class="delete-btn"
-                            onclick="deleteExpense(${expense.id})"
-                        >
-                            Delete
-                        </button>
-
-                    </td>
-                `;
-
-
-                expenseList.appendChild(
-                    row
+            const row =
+                document.createElement(
+                    "tr"
                 );
-            }
-        );
+
+
+            row.innerHTML = `
+
+                <td
+                    colspan="4"
+                    style="text-align: center;"
+                >
+                    No expenses found
+                </td>
+            `;
+
+
+            expenseList.appendChild(
+                row
+            );
+
+        } else {
+
+            expenses.forEach(
+                (expense) => {
+
+                    const row =
+                        document.createElement(
+                            "tr"
+                        );
+
+
+                    row.innerHTML = `
+
+                        <td>
+                            ${expense.amount}
+                        </td>
+
+                        <td>
+                            ${expense.description}
+                        </td>
+
+                        <td>
+                            ${expense.category}
+                        </td>
+
+                        <td>
+
+                            <button
+                                class="delete-btn"
+                                onclick="deleteExpense(${expense.id})"
+                            >
+                                Delete
+                            </button>
+
+                        </td>
+                    `;
+
+
+                    expenseList.appendChild(
+                        row
+                    );
+                }
+            );
+        }
 
 
         // ==================== SHOW PAGINATION ====================
 
         showPagination(
             data.currentPage,
-            data.lastPage
+            lastPage
         );
 
 
-        // Refresh report if available
+        // ==================== REFRESH REPORT ====================
+
         if (
             typeof generateReport ===
-            "function"
-            &&
-            typeof getSelectedPeriod ===
             "function"
         ) {
 
@@ -339,7 +469,7 @@ async function loadExpenses(
 // ==================== SHOW PAGINATION ====================
 
 function showPagination(
-    currentPage,
+    currentPageNumber,
     lastPage
 ) {
 
@@ -356,7 +486,9 @@ function showPagination(
     // If there is only one page,
     // no need to show pagination
 
-    if (lastPage <= 1) {
+    if (
+        lastPage <= 1
+    ) {
 
         return;
     }
@@ -375,16 +507,21 @@ function showPagination(
 
 
     previousButton.disabled =
-        currentPage === 1;
+        currentPageNumber === 1;
 
 
     previousButton.addEventListener(
         "click",
         () => {
 
-            loadExpenses(
-                currentPage - 1
-            );
+            if (
+                currentPageNumber > 1
+            ) {
+
+                loadExpenses(
+                    currentPageNumber - 1
+                );
+            }
         }
     );
 
@@ -394,7 +531,7 @@ function showPagination(
     );
 
 
-    // ==================== PAGE NUMBERS ====================
+    // ==================== PAGE NUMBER BUTTONS ====================
 
     for (
         let page = 1;
@@ -412,8 +549,10 @@ function showPagination(
             page;
 
 
+        // Highlight current page
+
         if (
-            page === currentPage
+            page === currentPageNumber
         ) {
 
             pageButton.classList.add(
@@ -452,16 +591,21 @@ function showPagination(
 
 
     nextButton.disabled =
-        currentPage === lastPage;
+        currentPageNumber === lastPage;
 
 
     nextButton.addEventListener(
         "click",
         () => {
 
-            loadExpenses(
-                currentPage + 1
-            );
+            if (
+                currentPageNumber < lastPage
+            ) {
+
+                loadExpenses(
+                    currentPageNumber + 1
+                );
+            }
         }
     );
 
@@ -484,7 +628,8 @@ async function deleteExpense(
             await fetch(
                 `/api/expenses/${expenseId}`,
                 {
-                    method: "DELETE",
+                    method:
+                        "DELETE",
 
                     headers: {
                         "Authorization":
@@ -506,6 +651,7 @@ async function deleteExpense(
 
 
             // Reload current page
+
             loadExpenses(
                 currentPage
             );
@@ -532,8 +678,13 @@ async function deleteExpense(
 window.loadExpenses =
     loadExpenses;
 
+
 window.deleteExpense =
     deleteExpense;
+
+
+window.showPagination =
+    showPagination;
 
 
 // ==================== INITIAL PAGE LOAD ====================
@@ -542,15 +693,11 @@ window.addEventListener(
     "load",
     () => {
 
-        loadExpenses(1);
+        loadExpenses(
+            currentPage
+        );
 
 
-        if (
-            typeof checkPremiumStatus ===
-            "function"
-        ) {
-
-            checkPremiumStatus();
-        }
+        checkPremiumStatus();
     }
 );
