@@ -24,4 +24,28 @@ router.post(
 );
 
 
+// Open reset password page
+router.get(
+    "/resetpassword/:id",
+    userController.getResetPassword
+);
+
+
+// Update password
+router.post(
+    "/updatepassword/:id",
+    userController.updatePassword
+);
+
+router.get(
+    "/resetpassword/:id",
+    userController.getResetPassword
+);
+
+router.post(
+    "/updatepassword/:id",
+    userController.updatePassword
+);
+
+
 module.exports = router;

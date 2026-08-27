@@ -14,6 +14,9 @@ const Expense =
 const Order =
     require("./models/orders");
 
+const ForgotPasswordRequests =
+    require("./models/forgotPasswordRequests");
+
 
 // ==================== MODEL ASSOCIATIONS ====================
 
@@ -21,6 +24,11 @@ const Order =
 User.hasMany(Expense);
 
 Expense.belongsTo(User);
+
+// User -> Forgot Password Requests
+User.hasMany(ForgotPasswordRequests);
+
+ForgotPasswordRequests.belongsTo(User);
 
 
 // User -> Orders
