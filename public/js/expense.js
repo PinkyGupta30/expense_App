@@ -7,6 +7,11 @@ window.allExpenses =
     [];
 
 
+// ==================== PAGINATION ====================
+
+let currentPage = 1;
+
+
 // ==================== CHECK LOGIN ====================
 
 if (!window.token) {
@@ -67,8 +72,10 @@ descriptionInput.addEventListener(
                     }
                 );
 
+
             const data =
                 await response.json();
+
 
             if (response.ok) {
 
@@ -77,7 +84,7 @@ descriptionInput.addEventListener(
                         "category"
                     )
                     .value =
-                        data.category;
+                    data.category;
             }
 
         } catch (error) {
@@ -99,12 +106,14 @@ expenseForm.addEventListener(
 
         event.preventDefault();
 
+
         const amount =
             document
                 .getElementById(
                     "amount"
                 )
                 .value;
+
 
         const description =
             document
@@ -113,12 +122,14 @@ expenseForm.addEventListener(
                 )
                 .value;
 
+
         const category =
             document
                 .getElementById(
                     "category"
                 )
                 .value;
+
 
         try {
 
@@ -145,8 +156,10 @@ expenseForm.addEventListener(
                     }
                 );
 
+
             const data =
                 await response.json();
+
 
             if (response.ok) {
 
@@ -154,9 +167,12 @@ expenseForm.addEventListener(
                     "Expense added successfully"
                 );
 
+
                 expenseForm.reset();
 
-                loadExpenses();
+
+                // Load first page
+                loadExpenses(1);
 
             } else {
 
@@ -178,13 +194,19 @@ expenseForm.addEventListener(
 
 // ==================== LOAD EXPENSES ====================
 
-async function loadExpenses() {
+async function loadExpenses(
+    page = 1
+) {
 
     try {
 
+        currentPage =
+            page;
+
+
         const response =
             await fetch(
-                "/api/expenses",
+                `/api/expenses?page=${page}`,
                 {
                     headers: {
                         "Authorization":
@@ -193,32 +215,37 @@ async function loadExpenses() {
                 }
             );
 
+
         if (!response.ok) {
 
             const data =
                 await response.json();
 
+
             alert(
                 data.message
             );
+
 
             localStorage.removeItem(
                 "token"
             );
 
+
             window.location.href =
                 "/login";
+
 
             return;
         }
 
-        const expenses =
+
+        const data =
             await response.json();
 
 
-        // Store expenses globally
-        window.allExpenses =
-            expenses;
+        const expenses =
+            data.expenses;
 
 
         const expenseList =
@@ -226,9 +253,13 @@ async function loadExpenses() {
                 "expenseList"
             );
 
+
         expenseList.innerHTML =
             "";
 
+
+        // Display only expenses returned
+        // Backend returns maximum 10 expenses
 
         expenses.forEach(
             (expense) => {
@@ -238,13 +269,20 @@ async function loadExpenses() {
                         "tr"
                     );
 
+
                 row.innerHTML = `
 
-                    <td>${expense.amount}</td>
+                    <td>
+                        ${expense.amount}
+                    </td>
 
-                    <td>${expense.description}</td>
+                    <td>
+                        ${expense.description}
+                    </td>
 
-                    <td>${expense.category}</td>
+                    <td>
+                        ${expense.category}
+                    </td>
 
                     <td>
 
@@ -258,6 +296,7 @@ async function loadExpenses() {
                     </td>
                 `;
 
+
                 expenseList.appendChild(
                     row
                 );
@@ -265,9 +304,20 @@ async function loadExpenses() {
         );
 
 
-        // Refresh report after expenses load
+        // ==================== SHOW PAGINATION ====================
+
+        showPagination(
+            data.currentPage,
+            data.lastPage
+        );
+
+
+        // Refresh report if available
         if (
             typeof generateReport ===
+            "function"
+            &&
+            typeof getSelectedPeriod ===
             "function"
         ) {
 
@@ -283,6 +333,142 @@ async function loadExpenses() {
             error
         );
     }
+}
+
+
+// ==================== SHOW PAGINATION ====================
+
+function showPagination(
+    currentPage,
+    lastPage
+) {
+
+    const pagination =
+        document.getElementById(
+            "pagination"
+        );
+
+
+    pagination.innerHTML =
+        "";
+
+
+    // If there is only one page,
+    // no need to show pagination
+
+    if (lastPage <= 1) {
+
+        return;
+    }
+
+
+    // ==================== PREVIOUS BUTTON ====================
+
+    const previousButton =
+        document.createElement(
+            "button"
+        );
+
+
+    previousButton.textContent =
+        "Previous";
+
+
+    previousButton.disabled =
+        currentPage === 1;
+
+
+    previousButton.addEventListener(
+        "click",
+        () => {
+
+            loadExpenses(
+                currentPage - 1
+            );
+        }
+    );
+
+
+    pagination.appendChild(
+        previousButton
+    );
+
+
+    // ==================== PAGE NUMBERS ====================
+
+    for (
+        let page = 1;
+        page <= lastPage;
+        page++
+    ) {
+
+        const pageButton =
+            document.createElement(
+                "button"
+            );
+
+
+        pageButton.textContent =
+            page;
+
+
+        if (
+            page === currentPage
+        ) {
+
+            pageButton.classList.add(
+                "active-page"
+            );
+        }
+
+
+        pageButton.addEventListener(
+            "click",
+            () => {
+
+                loadExpenses(
+                    page
+                );
+            }
+        );
+
+
+        pagination.appendChild(
+            pageButton
+        );
+    }
+
+
+    // ==================== NEXT BUTTON ====================
+
+    const nextButton =
+        document.createElement(
+            "button"
+        );
+
+
+    nextButton.textContent =
+        "Next";
+
+
+    nextButton.disabled =
+        currentPage === lastPage;
+
+
+    nextButton.addEventListener(
+        "click",
+        () => {
+
+            loadExpenses(
+                currentPage + 1
+            );
+        }
+    );
+
+
+    pagination.appendChild(
+        nextButton
+    );
 }
 
 
@@ -307,8 +493,10 @@ async function deleteExpense(
                 }
             );
 
+
         const data =
             await response.json();
+
 
         if (response.ok) {
 
@@ -316,7 +504,11 @@ async function deleteExpense(
                 "Expense deleted successfully"
             );
 
-            loadExpenses();
+
+            // Reload current page
+            loadExpenses(
+                currentPage
+            );
 
         } else {
 
@@ -335,7 +527,7 @@ async function deleteExpense(
 }
 
 
-// Make functions available globally
+// ==================== MAKE FUNCTIONS GLOBAL ====================
 
 window.loadExpenses =
     loadExpenses;
@@ -350,8 +542,15 @@ window.addEventListener(
     "load",
     () => {
 
-        loadExpenses();
+        loadExpenses(1);
 
-        checkPremiumStatus();
+
+        if (
+            typeof checkPremiumStatus ===
+            "function"
+        ) {
+
+            checkPremiumStatus();
+        }
     }
 );

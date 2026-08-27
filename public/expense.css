@@ -183,3 +183,38 @@ th {
     background-color: #cccccc;
     cursor: not-allowed;
 }
+
+/* ==================== PAGINATION ==================== */
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 25px;
+    margin-bottom: 10px;
+}
+
+.pagination button {
+    width: auto;
+    margin-top: 0;
+    padding: 8px 14px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.pagination button:hover {
+    background-color: #0056b3;
+}
+
+.pagination button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.pagination .active-page {
+    background-color: #28a745;
+}

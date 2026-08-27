@@ -17,8 +17,6 @@ reportButtons.forEach(
                     button.dataset.period;
 
 
-                // Remove active class
-
                 reportButtons.forEach(
                     (btn) => {
 
@@ -28,8 +26,6 @@ reportButtons.forEach(
                     }
                 );
 
-
-                // Add active class
 
                 button.classList.add(
                     "active-report-btn"
@@ -65,9 +61,92 @@ function getSelectedPeriod() {
 }
 
 
+// ==================== GET ALL EXPENSES ====================
+
+async function getAllExpenses() {
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/expenses",
+                {
+                    headers: {
+                        "Authorization":
+                            `Bearer ${window.token}`
+                    }
+                }
+            );
+
+
+        if (!response.ok) {
+
+            return [];
+        }
+
+
+        const data =
+            await response.json();
+
+
+        // Get pagination details
+
+        const lastPage =
+            data.lastPage;
+
+
+        let allExpenses =
+            [...data.expenses];
+
+
+        // Fetch remaining pages
+
+        for (
+            let page = 2;
+            page <= lastPage;
+            page++
+        ) {
+
+            const pageResponse =
+                await fetch(
+                    `/api/expenses?page=${page}`,
+                    {
+                        headers: {
+                            "Authorization":
+                                `Bearer ${window.token}`
+                        }
+                    }
+                );
+
+
+            const pageData =
+                await pageResponse.json();
+
+
+            allExpenses =
+                allExpenses.concat(
+                    pageData.expenses
+                );
+        }
+
+
+        return allExpenses;
+
+    } catch (error) {
+
+        console.log(
+            "Error getting all expenses:",
+            error
+        );
+
+        return [];
+    }
+}
+
+
 // ==================== GENERATE REPORT ====================
 
-function generateReport(
+async function generateReport(
     period
 ) {
 
@@ -81,17 +160,21 @@ function generateReport(
         "";
 
 
+    // Fetch all expenses
+
+    const allExpenses =
+        await getAllExpenses();
+
+
     let totalExpense =
         0;
 
-
-    // Current project contains expenses only
 
     let totalIncome =
         0;
 
 
-    window.allExpenses.forEach(
+    allExpenses.forEach(
         (expense) => {
 
             totalExpense +=
@@ -167,7 +250,7 @@ function generateReport(
 }
 
 
-// Make functions available globally
+// ==================== MAKE FUNCTIONS GLOBAL ====================
 
 window.generateReport =
     generateReport;
@@ -185,10 +268,17 @@ document
     )
     .addEventListener(
         "click",
-        () => {
+        async () => {
+
+            // Get all expenses, not only
+            // the currently displayed page
+
+            const allExpenses =
+                await getAllExpenses();
+
 
             if (
-                window.allExpenses.length === 0
+                allExpenses.length === 0
             ) {
 
                 alert(
@@ -203,7 +293,7 @@ document
                 "Amount,Description,Category\n";
 
 
-            window.allExpenses.forEach(
+            allExpenses.forEach(
                 (expense) => {
 
                     fileContent +=
