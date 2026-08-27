@@ -1,6 +1,11 @@
 
 const Expense = require("../models/expense");
 const User = require("../models/users");
+const { GoogleGenAI } = require("@google/genai");
+
+const ai = new GoogleGenAI({
+    apiKey: process.env.GEMINI_API_KEY
+});
 
 
 // ==================== ADD EXPENSE ====================
@@ -138,6 +143,55 @@ exports.deleteExpense = async (req, res) => {
 
         return res.status(500).json({
             message: "Could not delete expense"
+        });
+    }
+};
+
+// ==================== SUGGEST CATEGORY ====================
+
+exports.suggestCategory = async (req, res) => {
+
+    try {
+
+        const { description } = req.body;
+
+        const response = await ai.models.generateContent({
+
+            model: "gemini-3.7-flash",
+
+            contents: `
+Classify the following expense into exactly one of these categories:
+
+Food
+Petrol
+Salary
+Shopping
+Travel
+Other
+
+Expense description: ${description}
+
+Return only the category name. Do not explain anything.
+`
+        });
+
+
+        const category = response.text.trim();
+
+        return res.status(200).json({
+            category: category
+        });
+
+
+    } catch (error) {
+
+        console.log(
+            "Category suggestion error:",
+            error
+        );
+
+        return res.status(500).json({
+            message: "Could not suggest category"
         });
     }
 };

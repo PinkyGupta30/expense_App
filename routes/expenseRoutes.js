@@ -26,6 +26,14 @@ router.get(
     expenseController.getExpenses
 );
 
+// Suggest expense category using AI
+
+router.post(
+    "/suggest-category",
+    authenticate,
+    expenseController.suggestCategory
+);
+
 
 // Delete expense
 router.delete(

@@ -287,6 +287,53 @@
         const expenseForm =
             document.getElementById("expenseForm");
 
+        const descriptionInput =
+    document.getElementById("description");
+
+descriptionInput.addEventListener("blur", async () => {
+
+    const description = descriptionInput.value;
+
+    if (!description) {
+        return;
+    }
+
+    try {
+
+        const response = await fetch(
+            "/api/expenses/suggest-category",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+
+                body: JSON.stringify({
+                    description: description
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (response.ok) {
+
+            document
+                .getElementById("category")
+                .value = data.category;
+        }
+
+    } catch (error) {
+
+        console.log(
+            "Error suggesting category:",
+            error
+        );
+    }
+});    
+
         // Load expenses when page opens
 
         window.addEventListener(
