@@ -1,5 +1,7 @@
 const jwt = require("jsonwebtoken");
 
+const logger = require("../utils/logger");
+
 const authenticate = (req, res, next) => {
     try {
         const token = req.header("Authorization");
@@ -14,7 +16,7 @@ const authenticate = (req, res, next) => {
 
         const decodedToken = jwt.verify(
             jwtToken,
-            process.env.JWT_SECRET || "secretkey"
+            process.env.JWT_SECRET
         );
 
         req.user = decodedToken;
@@ -22,7 +24,12 @@ const authenticate = (req, res, next) => {
         next();
 
     } catch (error) {
-        console.log("Authentication error:", error);
+
+        logger.error({
+            message: "Authentication error",
+            error: error.message,
+            stack: error.stack
+        });
 
         return res.status(401).json({
             message: "Authentication failed"

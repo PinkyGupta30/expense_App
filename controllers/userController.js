@@ -4,8 +4,9 @@ const { v4: uuidv4 } = require("uuid");
 const path = require("path");
 
 const User = require("../models/users");
-
 const ForgotPasswordRequests = require("../models/forgotPasswordRequests");
+
+const logger = require("../utils/logger");
 
 // ==================== SIGNUP ====================
 
@@ -34,8 +35,14 @@ exports.signup = async (req, res) => {
     });
 
     return res.redirect("/signup-success");
+
   } catch (error) {
-    console.log("Signup error:", error);
+
+    logger.error({
+      message: "Signup error",
+      error: error.message,
+      stack: error.stack,
+    });
 
     return res.status(500).json({
       message: "Signup failed",
@@ -61,7 +68,10 @@ exports.login = async (req, res) => {
       });
     }
 
-    const isPasswordCorrect = await bcrypt.compare(password, user.password);
+    const isPasswordCorrect = await bcrypt.compare(
+      password,
+      user.password
+    );
 
     if (!isPasswordCorrect) {
       return res.status(401).json({
@@ -73,15 +83,21 @@ exports.login = async (req, res) => {
       {
         userId: user.id,
       },
-      process.env.JWT_SECRET || "secretkey",
+      process.env.JWT_SECRET
     );
 
     return res.status(200).json({
       message: "User logged in successfully",
       token: token,
     });
+
   } catch (error) {
-    console.log("Login error:", error);
+
+    logger.error({
+      message: "Login error",
+      error: error.message,
+      stack: error.stack,
+    });
 
     return res.status(500).json({
       message: "Login failed",
@@ -115,16 +131,26 @@ exports.forgotPassword = async (req, res) => {
       UserId: user.id,
     });
 
-    const resetUrl = `http://localhost:3000/password/resetpassword/${id}`;
+    const resetUrl =
+      `${process.env.RESET_PASSWORD_URL}/password/resetpassword/${id}`;
 
-    console.log("Reset Password URL:", resetUrl);
+    logger.info({
+      message: "Password reset URL generated",
+      userId: user.id,
+    });
 
     return res.status(200).json({
       message: "Password reset request created successfully",
       resetUrl: resetUrl,
     });
+
   } catch (error) {
-    console.log("Forgot password error:", error);
+
+    logger.error({
+      message: "Forgot password error",
+      error: error.message,
+      stack: error.stack,
+    });
 
     return res.status(500).json({
       message: "Something went wrong",
@@ -138,12 +164,13 @@ exports.getResetPassword = async (req, res) => {
   try {
     const id = req.params.id;
 
-    const forgotPasswordRequest = await ForgotPasswordRequests.findOne({
-      where: {
-        id: id,
-        isActive: true,
-      },
-    });
+    const forgotPasswordRequest =
+      await ForgotPasswordRequests.findOne({
+        where: {
+          id: id,
+          isActive: true,
+        },
+      });
 
     if (!forgotPasswordRequest) {
       return res
@@ -151,11 +178,24 @@ exports.getResetPassword = async (req, res) => {
         .send("Password reset link is invalid or has expired");
     }
 
-    return res.sendFile(path.join(__dirname, "../public/resetPassword.html"));
-  } catch (error) {
-    console.log("Get reset password error:", error);
+    return res.sendFile(
+      path.join(
+        __dirname,
+        "../public/resetPassword.html"
+      )
+    );
 
-    return res.status(500).send("Something went wrong");
+  } catch (error) {
+
+    logger.error({
+      message: "Get reset password error",
+      error: error.message,
+      stack: error.stack,
+    });
+
+    return res.status(500).send(
+      "Something went wrong"
+    );
   }
 };
 
@@ -167,20 +207,25 @@ exports.updatePassword = async (req, res) => {
 
     const { password } = req.body;
 
-    const forgotPasswordRequest = await ForgotPasswordRequests.findOne({
-      where: {
-        id: id,
-        isActive: true,
-      },
-    });
+    const forgotPasswordRequest =
+      await ForgotPasswordRequests.findOne({
+        where: {
+          id: id,
+          isActive: true,
+        },
+      });
 
     if (!forgotPasswordRequest) {
       return res.status(404).json({
-        message: "Password reset link is invalid or expired",
+        message:
+          "Password reset link is invalid or expired",
       });
     }
 
-    const user = await User.findByPk(forgotPasswordRequest.UserId);
+    const user =
+      await User.findByPk(
+        forgotPasswordRequest.UserId
+      );
 
     if (!user) {
       return res.status(404).json({
@@ -188,7 +233,8 @@ exports.updatePassword = async (req, res) => {
       });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword =
+      await bcrypt.hash(password, 10);
 
     user.password = hashedPassword;
 
@@ -199,10 +245,17 @@ exports.updatePassword = async (req, res) => {
     await forgotPasswordRequest.save();
 
     return res.status(200).json({
-      message: "Password updated successfully. Please login.",
+      message:
+        "Password updated successfully. Please login.",
     });
+
   } catch (error) {
-    console.log("Update password error:", error);
+
+    logger.error({
+      message: "Update password error",
+      error: error.message,
+      stack: error.stack,
+    });
 
     return res.status(500).json({
       message: "Could not update password",

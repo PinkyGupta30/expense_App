@@ -5,63 +5,44 @@ const User = require("../models/users");
 
 const cashfree = require("../services/cashfreeService");
 
+const logger = require("../utils/logger");
 
 // ==================== CREATE PREMIUM ORDER ====================
 
 exports.createOrder = async (req, res) => {
-
     try {
-
         const userId = req.user.userId;
 
-        const amount = 499;
+        const amount = process.env.PREMIUM_AMOUNT;
 
-        const orderId =
-            "order_" + uuidv4();
+        const orderId = "order_" + uuidv4();
 
-
-        // Create order in database
         await Order.create({
             orderId: orderId,
             status: "PENDING",
             UserId: userId
         });
 
-
-        // Cashfree order request
         const request = {
-
             order_amount: amount,
 
             order_currency: "INR",
 
             order_id: orderId,
 
-
             customer_details: {
-
                 customer_id: String(userId),
-
-                customer_phone: "7992219187"
+                customer_phone: process.env.CUSTOMER_PHONE
             },
 
-
             order_meta: {
-
-                return_url:
-                    "https://www.cashfree.com/devstudio/preview/pg/web/checkout?order_id={order_id}"
+                return_url: process.env.CASHFREE_RETURN_URL
             }
         };
 
-
-        // Create order in Cashfree
         const response =
-            await cashfree.PGCreateOrder(
-                request
-            );
+            await cashfree.PGCreateOrder(request);
 
-
-        // Save payment session ID
         await Order.update(
             {
                 paymentSessionId:
@@ -75,75 +56,48 @@ exports.createOrder = async (req, res) => {
             }
         );
 
-
         return res.status(200).json({
-
-            message:
-                "Order created successfully",
-
+            message: "Order created successfully",
             orderId: orderId,
-
             paymentSessionId:
                 response.data.payment_session_id
         });
 
-
     } catch (error) {
 
-        console.log(
-            "Cashfree order error:",
-            error.response?.data ||
-            error.message
-        );
+        logger.error({
+            message: "Cashfree order error",
+            error: error.response?.data || error.message,
+            stack: error.stack
+        });
 
         return res.status(500).json({
-
-            message:
-                "Cashfree order creation failed"
+            message: "Cashfree order creation failed"
         });
     }
 };
 
-
-
 // ==================== VERIFY PREMIUM PAYMENT ====================
 
 exports.verifyPayment = async (req, res) => {
-
     try {
+        const orderId = req.params.orderId;
 
-        const orderId =
-            req.params.orderId;
+        const userId = req.user.userId;
 
-        const userId =
-            req.user.userId;
-
-
-        // Check payment from Cashfree
         const response =
-            await cashfree.PGOrderFetchPayments(
-                orderId
-            );
+            await cashfree.PGOrderFetchPayments(orderId);
 
+        const payments = response.data;
 
-        const payments =
-            response.data;
-
-
-        // Find successful payment
         const successfulPayment =
             payments.find(
                 (payment) =>
-                    payment.payment_status ===
-                    "SUCCESS"
+                    payment.payment_status === "SUCCESS"
             );
-
-
-        // ==================== PAYMENT SUCCESS ====================
 
         if (successfulPayment) {
 
-            // Update order
             await Order.update(
                 {
                     status: "SUCCESSFUL"
@@ -156,8 +110,6 @@ exports.verifyPayment = async (req, res) => {
                 }
             );
 
-
-            // Make user premium
             await User.update(
                 {
                     isPremium: true
@@ -169,18 +121,11 @@ exports.verifyPayment = async (req, res) => {
                 }
             );
 
-
             return res.status(200).json({
-
                 success: true,
-
-                message:
-                    "Transaction successful"
+                message: "Transaction successful"
             });
         }
-
-
-        // ==================== PAYMENT FAILED ====================
 
         await Order.update(
             {
@@ -194,29 +139,21 @@ exports.verifyPayment = async (req, res) => {
             }
         );
 
-
         return res.status(400).json({
-
             success: false,
-
-            message:
-                "TRANSACTION FAILED"
+            message: "TRANSACTION FAILED"
         });
-
 
     } catch (error) {
 
-        console.log(
-            "Payment verification error:",
-            error.response?.data ||
-            error.message
-        );
-
+        logger.error({
+            message: "Payment verification error",
+            error: error.response?.data || error.message,
+            stack: error.stack
+        });
 
         return res.status(500).json({
-
-            message:
-                "Payment verification failed"
+            message: "Payment verification failed"
         });
     }
 };
