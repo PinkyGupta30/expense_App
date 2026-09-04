@@ -6,7 +6,6 @@ const fs = require("fs");
 const path = require("path");
 
 const sequelize = require("./config/database");
-
 const logger = require("./utils/logger");
 
 const User = require("./models/users");
@@ -16,15 +15,12 @@ const ForgotPasswordRequests = require("./models/forgotPasswordRequests");
 
 // ==================== MODEL ASSOCIATIONS ====================
 
-// User -> Expenses
 User.hasMany(Expense);
 Expense.belongsTo(User);
 
-// User -> Forgot Password Requests
 User.hasMany(ForgotPasswordRequests);
 ForgotPasswordRequests.belongsTo(User);
 
-// User -> Orders
 User.hasMany(Order);
 Order.belongsTo(User);
 
@@ -44,7 +40,7 @@ const app = express();
 const logDirectory = path.join(__dirname, "logs");
 
 if (!fs.existsSync(logDirectory)) {
-    fs.mkdirSync(logDirectory);
+    fs.mkdirSync(logDirectory, { recursive: true });
 }
 
 // ==================== MORGAN LOGGING ====================
@@ -76,7 +72,6 @@ app.use(express.static("public"));
 
 // ==================== FRONTEND ROUTES ====================
 
-// Login page
 app.get("/", (req, res) => {
     res.sendFile(
         path.join(__dirname, "public", "login.html")
@@ -95,21 +90,18 @@ app.get("/forgotpassword", (req, res) => {
     );
 });
 
-// Signup page
 app.get("/signup", (req, res) => {
     res.sendFile(
         path.join(__dirname, "public", "signup.html")
     );
 });
 
-// Signup success page
 app.get("/signup-success", (req, res) => {
     res.sendFile(
         path.join(__dirname, "public", "signup-success.html")
     );
 });
 
-// Expense dashboard
 app.get("/expense", (req, res) => {
     res.sendFile(
         path.join(__dirname, "public", "expense.html")
@@ -161,34 +153,37 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 
-sequelize
-    .authenticate()
+const startServer = async () => {
 
-    .then(() => {
+    try {
 
-        logger.info(
-            "Connected to MySQL database!"
-        );
+        await sequelize.authenticate();
 
-        return sequelize.sync();
-    })
+        logger.info("Connected to MySQL database!");
 
-    .then(() => {
+        await sequelize.sync();
 
         app.listen(PORT, () => {
 
             logger.info(
                 `Server is running on port ${PORT}`
             );
-        });
-    })
+            app.listen(PORT, () => {
+});
 
-    .catch((error) => {
+        });
+
+    } catch (error) {
 
         logger.error({
-            message: "Unable to connect to database",
+            message: "Unable to start server",
             error: error.message,
             stack: error.stack
         });
 
-    });
+        console.error("Unable to start server:", error);
+
+    }
+};
+
+startServer();
