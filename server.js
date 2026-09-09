@@ -98,7 +98,7 @@ app.get("/signup", (req, res) => {
 
 app.get("/signup-success", (req, res) => {
     res.sendFile(
-        path.join(__dirname, "public", "signup-success.html")
+        path.join(__dirname, "public", "signup.html")
     );
 });
 
@@ -137,6 +137,8 @@ app.get(
 
 app.use((err, req, res, next) => {
 
+    console.error("ERROR:", err);
+
     logger.error({
         message: err.message,
         stack: err.stack,
@@ -157,23 +159,35 @@ const startServer = async () => {
 
     try {
 
+        // Connect to database
         await sequelize.authenticate();
 
+        console.log("Connected to MySQL database!");
         logger.info("Connected to MySQL database!");
 
+        // Sync database
         await sequelize.sync();
 
+        console.log("Database synchronized successfully!");
+        logger.info("Database synchronized successfully!");
+
+        // Start server
         app.listen(PORT, () => {
+
+            console.log(
+                `Server is running on http://localhost:${PORT}`
+            );
 
             logger.info(
                 `Server is running on port ${PORT}`
             );
-            app.listen(PORT, () => {
-});
 
         });
 
     } catch (error) {
+
+        console.error("Unable to start server:");
+        console.error(error);
 
         logger.error({
             message: "Unable to start server",
@@ -181,9 +195,8 @@ const startServer = async () => {
             stack: error.stack
         });
 
-        console.error("Unable to start server:", error);
-
     }
 };
 
+// Start application
 startServer();

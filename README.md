@@ -1,147 +1,98 @@
-# Expense App – Signup Feature
+# Expense Tracker Application
 
-## Project Description
+A full-stack Expense Tracker application built using Node.js, Express.js, MySQL, Sequelize, HTML, CSS, and JavaScript.
 
-This project is a simple full-stack Signup feature built using Node.js, Express.js, HTML, and MySQL.
+The application allows users to create an account, log in securely, manage their expenses, get AI-based category suggestions, generate reports, access leaderboard and premium features, and make payments using Cashfree.
 
-Users can create an account by entering their name, email, and password. The submitted data is sent to the Express server and stored in a MySQL database.
+---
+
+## Project Overview
+
+The Expense Tracker helps users manage their daily expenses in one place.
+
+Users can:
+
+- Create an account
+- Log in securely
+- Add expenses
+- View expenses
+- Edit expenses
+- Delete expenses
+- Automatically get category suggestions using AI
+- View expense reports
+- Check leaderboard information
+- Access premium features
+- Create Cashfree payment orders
+- Verify payments
+
+The backend provides REST APIs and handles authentication, database operations, business logic, and external service integrations.
+
+---
 
 ## Technologies Used
 
-* Node.js
-* Express.js
-* HTML
-* CSS
-* MySQL
-* MySQL2
-* Git and GitHub
+### Backend
 
-## Features
+- Node.js
+- Express.js
+- Sequelize
+- MySQL
+- MySQL2
 
-* User-friendly signup page
-* Name, email, and password validation
-* POST request for signup
-* Express backend
-* MySQL database connection
-* User data stored in the `users` table
-* Unique email validation through the database
+### Authentication & Security
 
-## Project Structure
+- JWT (JSON Web Token)
+- bcrypt
+- dotenv
+- Authentication Middleware
 
-```text
-expense-app/
-│
-├── public/
-│   └── signup.html
-│
-├── .gitignore
-├── package.json
-├── package-lock.json
-├── README.md
-└── server.js
-```
+### Frontend
 
-## Database Setup
+- HTML
+- CSS
+- JavaScript
+- Fetch API
 
-Create the database:
+### Payment
 
-```sql
-CREATE DATABASE expense_app;
-```
+- Cashfree Payment Gateway
 
-Select the database:
+### AI
 
-```sql
-USE expense_app;
-```
+- Gemini API for expense category suggestions
 
-Create the users table:
+### Development Tools
 
-```sql
-CREATE TABLE users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL
-);
-```
+- Git
+- GitHub
+- Nodemon
+- VS Code
 
-## Installation
+---
 
-Clone the repository:
+# Features
 
-```bash
-git clone https://github.com/PinkyGupta30/expense_App.git
-```
+## 1. User Signup
 
-Move into the project folder:
+Users can create an account by providing:
 
-```bash
-cd expense_App
-```
+- Name
+- Email
+- Password
 
-Install dependencies:
+The password is encrypted using bcrypt before storing it in the database.
 
-```bash
-npm install
-```
-
-Configure your MySQL credentials in `server.js`.
-
-Start the application:
-
-```bash
-node server.js
-```
-
-## Usage
-
-Open the following URL in your browser:
+### Flow
 
 ```text
-http://localhost:3000/signup
-```
-
-Enter your name, email, and password, then click the **Sign Up** button.
-
-The application sends the data to the Express backend, which stores the user information in the MySQL database.
-
-## Application Flow
-
-```text
-User
-  ↓
 Signup Page
-  ↓
-POST /signup
-  ↓
-Express Server
-  ↓
-req.body
-  ↓
-MySQL Database
-  ↓
-User Stored Successfully
-```
-
-## API Endpoint
-
-### Signup
-
-**Method:** `POST`
-
-**Endpoint:**
-
-```text
-/signup
-```
-
-The request contains:
-
-* Name
-* Email
-* Password
-
-## Author
-
-Pinky Gupta
+     ↓
+POST Signup API
+     ↓
+Validate User
+     ↓
+Hash Password using bcrypt
+     ↓
+Store User in MySQL
+     ↓
+Signup Successful

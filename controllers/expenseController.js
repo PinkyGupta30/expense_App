@@ -2,8 +2,8 @@ const Expense = require("../models/expense");
 const User = require("../models/users");
 const { GoogleGenAI } = require("@google/genai");
 const sequelize = require("../config/database");
-
 const logger = require("../utils/logger");
+const { uploadFile } = require("../services/s3Service");
 
 const ai = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY,
@@ -263,4 +263,87 @@ Return only the category name. Do not explain anything.
             message: "Could not suggest category",
         });
     }
-};  
+};
+
+// ==================== DOWNLOAD EXPENSES ====================
+
+exports.downloadExpenses = async (req, res) => {
+
+    try {
+
+        const userId =
+            req.user.userId;
+
+        // Check whether user is premium
+        const user =
+            await User.findByPk(userId);
+
+        if (!user || !user.isPremium) {
+
+            return res.status(401).json({
+                message: "Unauthorized. Premium membership required."
+            });
+        }
+
+        // Get all expenses of this user
+        const expenses =
+            await Expense.findAll({
+
+                where: {
+                    UserId: userId
+                },
+
+                order: [
+                    ["id", "DESC"]
+                ]
+            });
+
+        // Create CSV file
+        let csv =
+            "ID,Amount,Description,Category,Note\n";
+
+        expenses.forEach(expense => {
+
+            csv +=
+                `${expense.id},${expense.amount},"${expense.description || ""}","${expense.category || ""}","${expense.note || ""}"\n`;
+
+        });
+
+        // Create unique file name
+        const fileName =
+            `expenses/user-${userId}-${Date.now()}.csv`;
+
+        // Upload file to S3
+        const fileUrl =
+            await uploadFile(fileName, csv);
+
+        return res.status(200).json({
+
+            message:
+                "Expenses file generated successfully",
+
+            fileUrl:
+                fileUrl
+        });
+
+    } catch (error) {
+
+        logger.error({
+
+            message:
+                "Download expenses error",
+
+            error:
+                error.message,
+
+            stack:
+                error.stack,
+        });
+
+        return res.status(500).json({
+
+            message:
+                "Could not generate expenses file"
+        });
+    }
+};

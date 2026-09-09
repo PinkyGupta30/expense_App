@@ -34,6 +34,13 @@ router.post(
     expenseController.suggestCategory
 );
 
+// Download expenses
+router.get(
+    "/download",
+    authenticate,
+    expenseController.downloadExpenses
+);
+
 
 // Delete expense
 router.delete(
